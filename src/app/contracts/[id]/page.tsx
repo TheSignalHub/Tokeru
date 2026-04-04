@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft, CheckCircle, Clock, AlertTriangle, XCircle,
   Coins, Upload, ExternalLink, Loader2, Eye, ShieldAlert, Wallet, Zap, Mail, BadgeCheck,
+  ChevronDown, Copy,
 } from "lucide-react";
 import {
   useContract,
@@ -180,6 +181,8 @@ function MilestonesTab(props: TabProps) {
     approvingId, rejectingId, rejectReason, showRejectForm,
     setShowRejectForm, setRejectReason, handleApprove, handleReject,
   } = props;
+
+  const [expandedDeliverable, setExpandedDeliverable] = useState<number | null>(null);
 
   function getActionLabel(m: Milestone): { text: string; highlight: "agency" | "client" | null } {
     switch (m.status) {
@@ -362,7 +365,65 @@ function MilestonesTab(props: TabProps) {
                       )}
                       {isDelivered && (
                         <>
-                          <div className="flex flex-col sm:flex-row gap-2 mt-4 pt-4 border-t border-border/50">
+                          {/* Deliverable preview */}
+                          <div className="mt-4 pt-4 border-t border-border/50">
+                            <button
+                              onClick={() => setExpandedDeliverable(expandedDeliverable === m.id ? null : m.id)}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent/80 transition-colors"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              View Deliverable
+                              <ChevronDown className={`h-3 w-3 transition-transform ${expandedDeliverable === m.id ? "rotate-180" : ""}`} />
+                            </button>
+                            <AnimatePresence>
+                              {expandedDeliverable === m.id && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: "auto" }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="mt-2 p-3 rounded-lg bg-surface-secondary border border-border/60 space-y-2">
+                                    {m.proofHash && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs text-muted font-medium">Proof hash:</span>
+                                        <code className="text-xs font-mono text-accent">{truncateMiddle(m.proofHash, 10, 8)}</code>
+                                        <button
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(m.proofHash!);
+                                            toast.success("Proof hash copied");
+                                          }}
+                                          className="text-muted hover:text-foreground transition-colors"
+                                          title="Copy proof hash"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    )}
+                                    {m.deliveredAt && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs text-muted font-medium">Delivered:</span>
+                                        <span className="text-xs text-foreground/80">
+                                          {new Date(m.deliveredAt).toLocaleString("en-US", {
+                                            month: "short", day: "numeric", year: "numeric",
+                                            hour: "2-digit", minute: "2-digit",
+                                          })}
+                                        </span>
+                                      </div>
+                                    )}
+                                    <Link
+                                      href={`/contracts/${id}/deliver`}
+                                      className="inline-flex items-center gap-1 text-xs text-accent hover:underline mt-1"
+                                    >
+                                      <ExternalLink className="h-3 w-3" /> View delivery page
+                                    </Link>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row gap-2 mt-3">
                             <Button
                               onPress={() => handleApprove(m.id)}
                               isDisabled={approvingId === m.id}

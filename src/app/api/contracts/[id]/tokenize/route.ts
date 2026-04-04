@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { isFactoryConfigured, createDeal } from "@/lib/blockchain";
 import type { TokenizationExposure } from "@/lib/types/contract";
 import { DEFAULT_EXPOSURE } from "@/lib/types/contract";
+import { notify } from "@/lib/notifications";
 
 const TokenizeBodySchema = z.object({
   tokenName: z.string().min(1).max(64),
@@ -123,6 +124,19 @@ export async function POST(
     });
 
     console.log(`[tokenize] Contract ${id} marked as investable: ${totalSupply} tokens at $${pricePerToken}/token`);
+
+    // Notify agency (confirmation)
+    if (contract.agency) {
+      notify(contract.agency, {
+        type: "investment_received",
+        title: "Contract tokenized",
+        message: `Contract tokenized: ${contract.title}. ${totalSupply} tokens at $${pricePerToken}/token. Investors can now purchase.`,
+        contractTitle: contract.title,
+        contractId: id,
+        tokenAmount: totalSupply,
+        amount: pricePerToken,
+      });
+    }
 
     return Response.json({
       success: true,

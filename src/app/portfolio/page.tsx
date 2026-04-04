@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useApi } from "@/hooks/use-api";
+import { useApi, postApi } from "@/hooks/use-api";
 import { PageHeader, SectionCard, EmptyState, StatCard } from "@/components/ui";
 import { TrendingUp, Store, CalendarClock } from "lucide-react";
 import Link from "next/link";
-import { Spinner } from "@heroui/react";
+import { Button, Input, Spinner } from "@heroui/react";
+import { toast } from "sonner";
 
 interface Holding {
   tokenAddress: string;
@@ -19,11 +21,23 @@ interface Holding {
   pnlPct: number;
 }
 
+interface SellResponse {
+  success: boolean;
+  amount: number;
+  salePrice: number;
+  totalReceived: number;
+  contractCompleted: boolean;
+}
+
 export default function PortfolioPage() {
   const { walletAddress, authenticated } = useAuth();
-  const { data: holdings, loading } = useApi<Holding[]>(
+  const { data: holdings, loading, refresh } = useApi<Holding[]>(
     walletAddress ? `/api/users/${walletAddress}/holdings` : null,
   );
+
+  const [sellFormOpen, setSellFormOpen] = useState<string | null>(null);
+  const [sellAmount, setSellAmount] = useState("");
+  const [selling, setSelling] = useState(false);
 
   if (!authenticated) {
     return (
@@ -48,6 +62,33 @@ export default function PortfolioPage() {
   const totalPnl = totalValue - totalCost;
   const activeContracts = items.length;
   const avgReturn = totalCost > 0 ? ((totalPnl / totalCost) * 100) : 0;
+
+  async function handleSell(contractId: string, maxAmount: number, buyPrice: number) {
+    const parsed = parseFloat(sellAmount);
+    if (!parsed || parsed <= 0 || parsed > maxAmount) {
+      toast.error(`Enter a valid amount between 1 and ${maxAmount}`);
+      return;
+    }
+
+    setSelling(true);
+    try {
+      const result = await postApi<SellResponse>(
+        `/api/marketplace/${contractId}/sell`,
+        { amount: parsed },
+      );
+      toast.success(
+        `Sold ${result.amount} tokens at $${result.salePrice.toFixed(2)}/token ($${result.totalReceived.toFixed(2)} total)`,
+      );
+      setSellFormOpen(null);
+      setSellAmount("");
+      refresh();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Sale failed";
+      toast.error(msg);
+    } finally {
+      setSelling(false);
+    }
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -83,19 +124,80 @@ export default function PortfolioPage() {
             <div className="divide-y divide-border/50 -mx-6 -mb-4">
               {items.map((h, i) => {
                 const value = h.amount * h.currentPrice;
+                const isOpen = sellFormOpen === h.contractId;
                 return (
-                  <Link key={i} href={`/marketplace/${h.contractId}`} className="flex items-center justify-between px-6 py-4 hover:bg-surface-secondary transition-colors">
-                    <div>
-                      <p className="font-medium text-sm">{h.tokenName}</p>
-                      <p className="text-xs text-muted">{h.amount} tokens at ${h.buyPrice.toFixed(2)}</p>
+                  <div key={i}>
+                    <div className="flex items-center justify-between px-6 py-4 hover:bg-surface-secondary transition-colors">
+                      <Link href={`/marketplace/${h.contractId}`} className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{h.tokenName}</p>
+                        <p className="text-xs text-muted">{h.amount} tokens at ${h.buyPrice.toFixed(2)}</p>
+                      </Link>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="font-bold text-sm">${value.toFixed(2)}</p>
+                          <p className={`text-xs ${h.pnl >= 0 ? "text-success" : "text-danger"}`}>
+                            {h.pnl >= 0 ? "+" : ""}{h.pnlPct}%
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onPress={() => {
+                            if (isOpen) {
+                              setSellFormOpen(null);
+                              setSellAmount("");
+                            } else {
+                              setSellFormOpen(h.contractId);
+                              setSellAmount("");
+                            }
+                          }}
+                          className="text-xs border-border"
+                        >
+                          {isOpen ? "Cancel" : "Sell"}
+                        </Button>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-sm">${value.toFixed(2)}</p>
-                      <p className={`text-xs ${h.pnl >= 0 ? "text-success" : "text-danger"}`}>
-                        {h.pnl >= 0 ? "+" : ""}{h.pnlPct}%
-                      </p>
-                    </div>
-                  </Link>
+                    {isOpen && (
+                      <div className="px-6 pb-4 space-y-3">
+                        <div className="p-3 rounded-lg bg-surface-secondary space-y-2">
+                          <div className="flex justify-between text-xs text-muted">
+                            <span>Available to sell</span>
+                            <span>{h.amount} tokens</span>
+                          </div>
+                          <div className="flex justify-between text-xs text-muted">
+                            <span>Sale price</span>
+                            <span>${h.currentPrice.toFixed(2)}/token</span>
+                          </div>
+                          {sellAmount && parseFloat(sellAmount) > 0 && (
+                            <div className="flex justify-between text-xs font-medium pt-1 border-t border-border/50">
+                              <span>Estimated value</span>
+                              <span>${(parseFloat(sellAmount) * h.currentPrice).toFixed(2)}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            min="1"
+                            max={h.amount}
+                            step="1"
+                            placeholder={`Amount (max ${h.amount})`}
+                            value={sellAmount}
+                            onChange={(e) => setSellAmount(e.target.value)}
+                            className="flex-1"
+                          />
+                          <Button
+                            size="sm"
+                            onPress={() => handleSell(h.contractId, h.amount, h.buyPrice)}
+                            isDisabled={selling || !sellAmount || parseFloat(sellAmount) <= 0}
+                            className="bg-danger text-white"
+                          >
+                            {selling ? <Spinner size="sm" className="text-white" /> : "Sell"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>

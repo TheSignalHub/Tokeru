@@ -133,8 +133,8 @@ export async function POST(
     console.log("[marketplace/buy] Holding recorded:", { buyerAddress, tokenId, amount, pricePerToken });
 
     // Notify agency
+    const investorLabel = `${buyerAddress.slice(0, 6)}...${buyerAddress.slice(-4)}`;
     if (contract.agency) {
-      const investorLabel = `${buyerAddress.slice(0, 6)}...${buyerAddress.slice(-4)}`;
       notify(contract.agency, {
         type: "investment_received",
         title: "Investment received",
@@ -146,6 +146,17 @@ export async function POST(
         investorName: investorLabel,
       });
     }
+
+    // Notify investor (buyer) — purchase confirmation
+    notify(buyerAddress, {
+      type: "investment_received",
+      title: "Purchase confirmed",
+      message: `Purchase confirmed: ${amount.toLocaleString()} tokens of ${contract.title} at $${pricePerToken}/token.`,
+      contractTitle: contract.title,
+      contractId: tokenId,
+      tokenAmount: amount,
+      amount: totalCost,
+    });
 
     return Response.json({
       success: true,

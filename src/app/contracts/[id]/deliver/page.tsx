@@ -22,6 +22,8 @@ export default function DeliverPage() {
   const [links, setLinks] = useState(["", ""]);
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submittedProofHash, setSubmittedProofHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -61,8 +63,11 @@ export default function DeliverPage() {
         description: notes || undefined,
         links: links.filter(Boolean),
       });
-      toast.success("Deliverable submitted");
-      router.push(`/contracts/${id}`);
+      setSubmittedProofHash(proofHash);
+      setSubmitted(true);
+      setTimeout(() => {
+        router.push(`/contracts/${id}`);
+      }, 2000);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Submission failed";
       setError(msg);
@@ -91,6 +96,26 @@ export default function DeliverPage() {
           >
             ← Back to Contract
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (submitted) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="rounded-xl border border-success/30 bg-success/5 p-8 text-center">
+          <CheckCircle className="h-12 w-12 text-success mx-auto mb-3" />
+          <p className="text-lg font-semibold text-foreground mb-1">Deliverable submitted</p>
+          {submittedProofHash && (
+            <p className="text-xs text-muted mb-2">
+              Proof hash: <code className="font-mono text-accent">{submittedProofHash}</code>
+            </p>
+          )}
+          <p className="text-sm text-muted">
+            The client has been notified and will review your submission.
+          </p>
+          <p className="text-xs text-muted mt-4">Redirecting to contract...</p>
         </div>
       </div>
     );

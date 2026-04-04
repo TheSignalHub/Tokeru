@@ -77,3 +77,55 @@ export async function addToHolding(
     });
   }
 }
+
+/**
+ * Reduce an investor's holding by the given amount.
+ * If the resulting amount is 0 or less, the holding row is deleted.
+ * Returns true if the reduction was applied, false if insufficient balance.
+ */
+export async function reduceHolding(
+  investorAddress: string,
+  contractId: string,
+  amount: number,
+): Promise<boolean> {
+  const db = getDb();
+  const existing = await db
+    .select()
+    .from(investorHoldings)
+    .where(
+      and(
+        eq(investorHoldings.investorAddress, investorAddress.toLowerCase()),
+        eq(investorHoldings.contractId, contractId),
+      ),
+    );
+
+  if (existing.length === 0) return false;
+
+  const old = existing[0];
+  if (old.amount < amount) return false;
+
+  const newAmount = old.amount - amount;
+  if (newAmount <= 0) {
+    await db
+      .delete(investorHoldings)
+      .where(eq(investorHoldings.id, old.id));
+  } else {
+    await db
+      .update(investorHoldings)
+      .set({ amount: newAmount })
+      .where(eq(investorHoldings.id, old.id));
+  }
+  return true;
+}
+
+/**
+ * Find all holdings for a given contract (all investors).
+ */
+export async function findByContract(contractId: string): Promise<Holding[]> {
+  const db = getDb();
+  const result = await db
+    .select()
+    .from(investorHoldings)
+    .where(eq(investorHoldings.contractId, contractId));
+  return result as Holding[];
+}

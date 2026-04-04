@@ -60,7 +60,10 @@ export type NotificationType =
   | "contract_completed"
   | "contract_refunded"
   | "investment_received"
-  | "evidence_submitted";
+  | "evidence_submitted"
+  | "token_sold"
+  | "milestone_completed_investor"
+  | "contract_completed_investor";
 
 interface NotificationParams {
   to: string;
@@ -186,6 +189,25 @@ const NOTIFICATION_CONFIG: Record<
     body: (p) =>
       `<p>${p.actorName || "The other party"} has submitted new evidence in the dispute on <strong>${p.contractTitle}</strong>.</p>
        <p style="margin-top:12px;padding:12px;background:#fff3e0;border-radius:6px;">Review the evidence in the dispute details to stay informed.</p>`,
+  },
+  token_sold: {
+    subject: (p) => `Tokens sold: ${p.contractTitle}`,
+    body: (p) =>
+      `<p>You have successfully sold${p.tokenAmount ? ` <strong>${p.tokenAmount.toLocaleString()}</strong>` : ""} tokens for <strong>${p.contractTitle}</strong>.</p>
+       ${p.amount ? `<p>Sale value: <strong>$${p.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong></p>` : ""}
+       <p style="margin-top:12px;padding:12px;background:#e8f5e9;border-radius:6px;">The tokens have been burned and the sale has been recorded.</p>`,
+  },
+  milestone_completed_investor: {
+    subject: (p) => `Milestone completed: ${p.contractTitle}`,
+    body: (p) =>
+      `<p>A milestone${p.milestoneName ? ` (<strong>${p.milestoneName}</strong>)` : ""} has been completed on <strong>${p.contractTitle}</strong>.</p>
+       <p style="margin-top:12px;padding:12px;background:#e8f5e9;border-radius:6px;">Your investment is progressing. You can view the milestone status in your portfolio.</p>`,
+  },
+  contract_completed_investor: {
+    subject: (p) => `Contract completed: ${p.contractTitle}`,
+    body: (p) =>
+      `<p>All milestones on <strong>${p.contractTitle}</strong> have been completed and approved.</p>
+       <p style="margin-top:12px;padding:12px;background:#e8f5e9;border-radius:6px;">You can now sell your tokens at face value ($1.00/token). Visit your portfolio to sell.</p>`,
   },
 };
 

@@ -189,6 +189,39 @@ export async function POST(
       });
     }
 
+    // Notify investors that a milestone was completed
+    try {
+      const investorHoldings = await db.holdings.findByContract(id);
+      const uniqueInvestors = [...new Set(investorHoldings.map((h) => h.investorAddress))];
+
+      if (allApproved) {
+        // Contract fully completed — investors can sell at face value
+        for (const investor of uniqueInvestors) {
+          notify(investor, {
+            type: "contract_completed_investor",
+            title: "Contract completed",
+            message: `Contract completed: "${contract.title}". You can now sell your tokens at face value ($1.00/token).`,
+            contractTitle: contract.title,
+            contractId: id,
+          });
+        }
+      } else {
+        // Single milestone completed — progress update
+        for (const investor of uniqueInvestors) {
+          notify(investor, {
+            type: "milestone_completed_investor",
+            title: "Milestone completed",
+            message: `Milestone completed: "${milestone.name}" on "${contract.title}". Your investment is progressing.`,
+            contractTitle: contract.title,
+            contractId: id,
+            milestoneName: milestone.name,
+          });
+        }
+      }
+    } catch (investorNotifErr) {
+      console.error("[approve] Investor notification failed:", investorNotifErr);
+    }
+
     // Notify both parties when contract is fully completed
     if (allApproved) {
       const completedNotif = {

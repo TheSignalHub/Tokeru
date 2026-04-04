@@ -18,7 +18,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useTokenDetail } from "@/hooks/use-marketplace";
-import { postApi } from "@/hooks/use-api";
+import { useApi, postApi } from "@/hooks/use-api";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { Button, Input, Spinner } from "@heroui/react";
@@ -37,6 +37,26 @@ interface BuyResponse {
   tokenId: string;
   buyerAddress: string;
   txHash?: string;
+}
+
+interface SellResponse {
+  success: boolean;
+  amount: number;
+  salePrice: number;
+  totalReceived: number;
+  contractCompleted: boolean;
+}
+
+interface HoldingItem {
+  tokenAddress: string;
+  contractId: string;
+  contractTitle: string;
+  tokenName: string;
+  amount: number;
+  buyPrice: number;
+  currentPrice: number;
+  pnl: number;
+  pnlPct: number;
 }
 
 type TabKey = "overview" | "milestones" | "agency" | "security";
@@ -59,6 +79,14 @@ export default function TokenDetailPage() {
   const [buyResult, setBuyResult] = useState<BuyResponse | null>(null);
   const [buyError, setBuyError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [sellAmount, setSellAmount] = useState("");
+  const [selling, setSelling] = useState(false);
+
+  // Fetch user holdings to show sell section
+  const { data: userHoldings, refresh: refreshHoldings } = useApi<HoldingItem[]>(
+    walletAddress ? `/api/users/${walletAddress}/holdings` : null,
+  );
+  const myHolding = userHoldings?.find((h) => h.contractId === tokenId);
 
   if (loading) {
     return (
@@ -143,6 +171,34 @@ export default function TokenDetailPage() {
       toast.error(msg);
     } finally {
       setBuying(false);
+    }
+  }
+
+  async function handleSell() {
+    const parsed = parseFloat(sellAmount);
+    if (!parsed || parsed <= 0) return;
+    if (!walletAddress || !myHolding) return;
+    if (parsed > myHolding.amount) {
+      toast.error(`You only hold ${myHolding.amount} tokens`);
+      return;
+    }
+
+    setSelling(true);
+    try {
+      const result = await postApi<SellResponse>(
+        `/api/marketplace/${tokenId}/sell`,
+        { amount: parsed },
+      );
+      toast.success(
+        `Sold ${result.amount} tokens at $${result.salePrice.toFixed(2)}/token ($${result.totalReceived.toFixed(2)} total)`,
+      );
+      setSellAmount("");
+      refreshHoldings();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Sale failed";
+      toast.error(msg);
+    } finally {
+      setSelling(false);
     }
   }
 
@@ -690,6 +746,75 @@ export default function TokenDetailPage() {
               </div>
             )}
           </SectionCard>
+
+          {/* Sell Card — only visible if user holds tokens */}
+          {authenticated && myHolding && myHolding.amount > 0 && (
+            <SectionCard title="Sell Tokens" className="border-warning/30">
+              <div className="space-y-4">
+                <div className="p-3 rounded-lg bg-surface-secondary space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted">Your holdings</span>
+                    <span className="font-medium">{myHolding.amount} {apiToken.tokenSymbol}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted">Buy price</span>
+                    <span>${myHolding.buyPrice.toFixed(2)}/token</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted">Current sell price</span>
+                    <span className="font-medium text-accent">${myHolding.currentPrice.toFixed(2)}/token</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-muted mb-1 block">
+                    Number of tokens to sell
+                  </label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={myHolding.amount}
+                    step="1"
+                    placeholder={`Max ${myHolding.amount}`}
+                    value={sellAmount}
+                    onChange={(e) => setSellAmount(e.target.value)}
+                    variant="secondary"
+                    className="w-full"
+                  />
+                </div>
+
+                {sellAmount && parseFloat(sellAmount) > 0 && (
+                  <div className="p-3 rounded-lg bg-surface-secondary text-sm space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted">Tokens to sell</span>
+                      <span>{parseFloat(sellAmount)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold">
+                      <span className="text-muted">Estimated value</span>
+                      <span>${(parseFloat(sellAmount) * myHolding.currentPrice).toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  onPress={handleSell}
+                  isDisabled={selling || !sellAmount || parseFloat(sellAmount) <= 0}
+                  className="w-full bg-warning text-warning-foreground"
+                >
+                  {selling ? (
+                    <span className="flex items-center gap-2">
+                      <Spinner size="sm" />
+                      Processing...
+                    </span>
+                  ) : `Sell ${sellAmount || "0"} ${apiToken.tokenSymbol}`}
+                </Button>
+
+                <p className="text-xs text-muted/70 text-center leading-relaxed">
+                  Completed contracts sell at face value ($1.00/token). In-progress contracts sell at your buy price.
+                </p>
+              </div>
+            </SectionCard>
+          )}
 
           {/* Condensed Agency link */}
           <button

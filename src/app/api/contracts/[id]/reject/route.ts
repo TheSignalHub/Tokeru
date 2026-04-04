@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db, ensureInit } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { rejectMilestone, isBlockchainConfigured } from "@/lib/blockchain";
-import { notifyUser } from "@/lib/email";
+import { notify } from "@/lib/notifications";
 
 const RejectSchema = z.object({
   milestoneId: z.number().int().positive(),
@@ -87,11 +87,13 @@ export async function POST(
 
     // Notify agency that milestone was rejected
     if (contract.agency) {
-      notifyUser(contract.agency, {
+      notify(contract.agency, {
         type: "milestone_rejected",
+        title: "Milestone rejected",
+        message: `Milestone rejected: ${milestone.name}. Reason: ${parsed.data.reason}. Revise and re-submit.`,
         contractTitle: contract.title,
         contractId: id,
-        milestoneName: milestone?.name,
+        milestoneName: milestone.name,
         reason: parsed.data.reason,
       });
     }
