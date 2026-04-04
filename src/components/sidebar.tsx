@@ -12,6 +12,7 @@ import {
   Loader2,
   Wallet,
   User,
+  HelpCircle,
   X,
 } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
@@ -27,6 +28,7 @@ const mainNav = [
 
 const bottomNav = [
   { href: "/profile", label: "Account", icon: User },
+  { href: "/help", label: "Help", icon: HelpCircle },
 ];
 
 function isActive(pathname: string, href: string) {
