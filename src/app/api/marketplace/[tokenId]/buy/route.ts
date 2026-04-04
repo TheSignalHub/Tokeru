@@ -49,7 +49,10 @@ export async function POST(
     }
 
     if (!contract.tokenAddress || !contract.onChainAddress) {
-      return Response.json({ error: "Contract not deployed on-chain" }, { status: 400 });
+      return Response.json(
+        { error: "Contract not yet deployed on-chain. The agency needs to re-tokenize this contract to trigger deployment." },
+        { status: 400 },
+      );
     }
 
     // Parse tokenization settings (1 token = $1 face value by default)

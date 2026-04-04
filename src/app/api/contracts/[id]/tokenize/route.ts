@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 import { z } from "zod";
 import { db, ensureInit } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+import { isFactoryConfigured, createDeal } from "@/lib/blockchain";
 import type { TokenizationExposure } from "@/lib/types/contract";
 import { DEFAULT_EXPOSURE } from "@/lib/types/contract";
 
@@ -68,10 +69,49 @@ export async function POST(
 
     const { tokenName, tokenSymbol, totalSupply, pricePerToken, exposure } = parsed.data;
 
+    // Deploy on-chain if not yet deployed (handles contracts created before factory was ready)
+    let tokenAddress = contract.tokenAddress;
+    let onChainAddress = contract.onChainAddress;
+
+    if (!onChainAddress && isFactoryConfigured() && contract.client && contract.agency) {
+      try {
+        console.log(`[tokenize] Contract not on-chain yet — deploying via factory...`);
+        const result = await createDeal({
+          client: contract.client,
+          agency: contract.agency,
+          bd: contract.bd,
+          bdFeeBps: Math.round((contract.bdFeePercent ?? 0) * 100),
+          termsHash: contract.termsHash || `terms_${contract.id}`,
+          milestones: contract.milestones.map((m) => ({
+            name: m.name,
+            amount: BigInt(Math.round(m.amount * 1e18)),
+            deadline: m.deadline ? Math.floor(new Date(m.deadline).getTime() / 1000) : 0,
+          })),
+          tokenName,
+          tokenSymbol,
+        });
+
+        onChainAddress = result.serviceContractAddress;
+        tokenAddress = result.tokenAddress;
+
+        await db.contracts.update(id, {
+          onChainAddress,
+          tokenAddress,
+        });
+        console.log(`[tokenize] Deployed on-chain: ${onChainAddress}, token: ${tokenAddress}`);
+      } catch (chainErr) {
+        const msg = chainErr instanceof Error ? chainErr.message : String(chainErr);
+        console.error("[tokenize] Factory deploy failed:", msg);
+        return Response.json(
+          { error: `On-chain deployment failed: ${msg}` },
+          { status: 500 },
+        );
+      }
+    }
+
     const exposureSettings: TokenizationExposure = {
       ...DEFAULT_EXPOSURE,
       ...exposure,
-      // Store pricing info for the buy route
       tokenName,
       tokenSymbol,
       totalSupply,
@@ -87,7 +127,8 @@ export async function POST(
     return Response.json({
       success: true,
       contract: updated,
-      tokenAddress: contract.tokenAddress,
+      tokenAddress: tokenAddress ?? null,
+      onChainAddress: onChainAddress ?? null,
       totalSupply,
       pricePerToken,
     });
