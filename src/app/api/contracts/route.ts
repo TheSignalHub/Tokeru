@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("[contracts/POST] Error:", error);
+    console.error("[contracts/POST] Error:", error instanceof Error ? error.stack : error);
     // Sanitize error messages — never expose raw DB/blockchain errors to the user
     const rawMsg = error instanceof Error ? error.message : "";
     let userMessage = "Failed to create contract. Please try again.";

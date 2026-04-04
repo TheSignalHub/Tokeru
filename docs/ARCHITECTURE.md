@@ -20,10 +20,21 @@ TrustSignal currently runs on **Base Sepolia** (local dev: Anvil fork at `localh
 │  ContractToken (per-deal ERC20)                     │
 │    └── Traded on Uniswap V3 after tokenization      │
 │                                                     │
+│  AgencyProfile (singleton)                           │
+│    ├── On-chain agency reputation                    │
+│    ├── Records: completions, failures, disputes      │
+│    ├── Stores score (0-100) and attestation hashes   │
+│    └── Owner-only writes (platform deployer)         │
+│                                                     │
 │  Uniswap V3 (from Base Sepolia)                     │
 │    ├── Factory: 0x4752ba5DBc23f44D87826276BF6Fd6b1C │
 │    ├── Router:  0x94cC0AaC535CCDB3C01d678...         │
 │    └── NonfungiblePositionManager: 0x27F971cb...     │
+│                                                     │
+│  EAS (predeployed on Base)                           │
+│    ├── EAS: 0x4200000000000000000000000000000021      │
+│    ├── SchemaRegistry: 0x42000000000000000000000020   │
+│    └── KYB attestations for agency verification      │
 │                                                     │
 │  Test USDC (ContractToken deployed as tUSDC)         │
 │    └── Minted by deploy script for testing           │
@@ -41,7 +52,9 @@ TrustSignal currently runs on **Base Sepolia** (local dev: Anvil fork at `localh
 | Deliverable proofs | DB + on-chain hash | Proof of submission |
 | ContractToken (ERC20) | On-chain | Deployed by factory, traded on Uniswap |
 | Token marketplace | Uniswap V3 pools | Real AMM liquidity |
-| Agency reputation | DB (agencyProfiles table) | Not yet on-chain |
+| Agency reputation | DB + on-chain (AgencyProfile.sol) | Score, completions, disputes synced on-chain |
+| Documents / evidence | DB + Pinata (IPFS) + Vercel Blob | Dual-write: Pinata primary, Blob fallback |
+| KYB verification | On-chain (EAS attestation) | Revocable attestation on Base |
 | Disputes | DB | Kleros not yet wired (requires Arbitrum) |
 
 ## The Complete Flow
@@ -75,19 +88,24 @@ Client: POST /api/contracts/[id]/approve
   → Optional: Unlink private transfer to agency
 ```
 
-### 4. Tokenization (Agency only)
+### 4. Tokenization (3 Separate Steps — Agency only)
 ```
-Agency calls POST /api/contracts/[id]/tokenize
-  → ContractToken.mint() — tokens minted
+Step 1 — Tokenize (DB-only):
+  Agency calls POST /api/contracts/[id]/tokenize
+  → Contract marked as tokenized in DB
+  → Agency chooses exposure settings (what investors see)
+  → No on-chain action yet
+
+Step 2 — Buy (mint on demand):
+  Investor calls POST /api/marketplace/[tokenId]/buy
+  → ContractToken.mint() on-chain
+  → USDC → ContractToken swap via Uniswap V3
+  → Real AMM execution
+
+Step 3 — Pool (optional):
+  Agency calls POST /api/contracts/[id]/pool
   → Uniswap V3 pool created (ContractToken/USDC)
   → Initial liquidity added (full-range position)
-```
-
-### 5. Investor Purchase
-```
-Investor calls POST /api/marketplace/[tokenId]/buy
-  → USDC → ContractToken swap via Uniswap V3
-  → Real AMM execution (not a custom marketplace)
 ```
 
 ### 6. Dispute (Partial — DB only)
@@ -115,10 +133,55 @@ When configured (`UNLINK_API_KEY`), escrow deposits and agency payouts can use U
 
 Investors see only what the agency chose to expose during tokenization (via `TokenizationExposure` settings).
 
+## AgencyProfile.sol (On-Chain Reputation)
+
+Singleton contract that stores agency reputation on-chain. Owner-only writes (platform deployer).
+
+```
+AgencyProfile.sol
+  ├── recordCompletion(agency, volume, score)  — on contract completion
+  ├── recordFailure(agency, score)             — on contract failure
+  ├── recordDisputeResult(agency, won, score)  — on dispute resolution
+  ├── addAttestation(agency, proofHash)        — ZKP attestation hashes
+  └── setVerified(agency, verified)            — KYC/KYB flag
+```
+
+Stores per-agency: contractsCompleted, contractsFailed, disputesWon, disputesLost, totalVolume, score (0-100), verified flag, attestation hashes.
+
+Wrapper: `src/lib/blockchain/agency-profile.ts` — all calls are best-effort (failure logged, never blocks UI).
+
+## File Storage (Pinata + Blob Dual-Write)
+
+`src/lib/storage/` provides dual-write file storage:
+
+```
+uploadFile(buffer, filename, contentType) → StorageResult
+  1. Try Pinata (IPFS) → returns CID + gateway URL
+  2. If Pinata succeeds: dual-write to Blob async (non-blocking)
+  3. If Pinata fails/unconfigured: fall back to Vercel Blob
+  4. If both fail: return data URL placeholder with content hash
+```
+
+Files are recorded in the `documents` table (DB) with: IPFS hash, Blob URL, SHA-256 content hash, extracted text, and metadata.
+
+## EAS Attestations (KYB Verification)
+
+`src/lib/eas/` uses the Ethereum Attestation Service (predeployed on Base) for KYB verification.
+
+```
+Agency verification flow:
+  POST /api/users/[address]/verify
+  → attestAgencyKYB(address, jurisdiction, companyName)
+  → EAS.attest() on-chain (schema: isVerified, jurisdiction, companyName, verifiedAt)
+  → Attestation UID stored in user profile (DB)
+  → Verifiable by anyone via verifyAttestation(uid)
+  → Revocable if agency is flagged
+```
+
+Schema UID is computed deterministically and registered once. EAS contracts are predeployed at `0x4200...0021` (EAS) and `0x4200...0020` (SchemaRegistry) on Base.
+
 ## Future Enhancements
 
-- **Kleros integration** — requires moving to Arbitrum (Kleros is native there)
-- **On-chain agency reputation** (AgencyProfile.sol) — currently DB-only
-- **On-chain document storage** — currently evidence is DB-only
+- **Kleros integration** — requires moving to Arbitrum (Kleros is native there); evidence + fee payment works, court ruling is stubbed
 - **Investor holdings tracking** — add `holdings` table to DB
 - **Trust Oracle** — public reputation verification page

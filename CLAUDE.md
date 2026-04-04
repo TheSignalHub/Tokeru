@@ -72,11 +72,12 @@ src/lib/blockchain/abis/      ← AUTO-GENERATED from Solidity — never edit by
 | `contracts` | UUID | Service contracts |
 | `milestones` | contractId + id | Milestones per contract |
 | `users` | wallet address | User profiles |
-| `agencyProfiles` | wallet address | Agency reputation (DB-only for now) |
+| `agencyProfiles` | wallet address | Agency reputation (synced to AgencyProfile.sol on-chain) |
 | `disputes` | UUID | Dispute phases, party responses, evidence |
 | `escrows` | contractId | Escrow state + deposit records (JSON column) |
+| `documents` | UUID | File storage records (IPFS hash, Blob URL, content hash, extracted text) |
 
-**Not yet in schema (TODO):** `documents` (evidence storage), `holdings` (investor portfolio tracking).
+**Not yet in schema (TODO):** `holdings` (investor portfolio tracking).
 
 **Data flow:** API routes (`src/app/api/`) serve JSON → client hooks (`src/hooks/`) consume them. `useApi<T>(url)` for reads, `postApi<T>(url, body)` for mutations.
 
@@ -108,7 +109,10 @@ API routes follow "chain-first" pattern: execute the on-chain transaction, then 
 | `privacy/` | Unlink SDK — ZKP shielded deposits/transfers/withdrawals |
 | `payments/` | Privy server auth, escrow fee calculations |
 | `email/` | Resend — invite & notification emails (14 types) |
-| `db/` | Drizzle ORM — contracts, users, disputes, escrows |
+| `storage/` | Pinata (IPFS) + Vercel Blob dual-write file storage |
+| `eas/` | EAS attestations — KYB verification on-chain (Base predeployed) |
+| `scoring/` | Agency score computation (completion rate, dispute wins, AI score) |
+| `db/` | Drizzle ORM — contracts, users, disputes, escrows, documents |
 | `types/` | All shared TypeScript interfaces |
 
 ## Mandatory: Theme & Design Tokens
@@ -166,13 +170,12 @@ POST /api/contracts → db.contracts.createContract() → factory.createDeal()
 
 **Singletons:**
 - **ContractFactory.sol** — deploys SC+Token pairs
+- **AgencyProfile.sol** — on-chain agency reputation (completions, failures, disputes, score, attestations)
 
 Fee structure: 2.5% platform (fixed) + 0-20% BD commission + remainder to agency, per milestone.
 
 ### Future / Not Yet Implemented
-- **On-chain agency reputation** (AgencyProfile.sol) — currently DB-only
-- **On-chain document storage** (DocumentStore) — currently console.log only
-- **Kleros court integration** — requires Arbitrum; on Base Sepolia disputes are DB-only
+- **Kleros court integration** — requires Arbitrum; on Base Sepolia disputes are DB-only (evidence + fee payment works, court ruling is stubbed)
 - **Trust Oracle page** (/oracle) — not yet built
 - **Investor holdings tracking** — swaps execute on Uniswap but no DB record
 
@@ -193,6 +196,10 @@ Fee structure: 2.5% platform (fixed) + 0-20% BD commission + remainder to agency
 | `RESEND_API_KEY` | Optional | Email sending (gracefully degrades if missing) |
 | `UNLINK_API_KEY` | Optional | Unlink ZKP privacy (optional) |
 | `EVM_PRIVATE_KEY` | Optional | For Unlink wallet client |
+| `PINATA_JWT` | Optional | Pinata IPFS upload (file storage primary) |
+| `PINATA_GATEWAY_URL` | Optional | Pinata dedicated gateway URL |
+| `BLOB_READ_WRITE_TOKEN` | Optional | Vercel Blob (file storage fallback / dual-write) |
+| `AGENCY_PROFILE_ADDRESS` | At deploy | AgencyProfile singleton address |
 
 ## Path Alias
 

@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Coins, Loader2, CheckCircle, ExternalLink } from "lucide-react";
+import { Coins, Loader2, CheckCircle, ExternalLink, Eye } from "lucide-react";
 import { useContract, tokenizeContract } from "@/hooks/use-contracts";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { Button, Input } from "@heroui/react";
 import { PageHeader, SectionCard } from "@/components/ui";
+import type { TokenizationExposure } from "@/lib/types/contract";
 import Link from "next/link";
 
 type Step = "form" | "confirm" | "saving" | "success";
@@ -26,6 +27,9 @@ export default function TokenizePage() {
   const [discountPct, setDiscountPct] = useState(10);
   const [step, setStep] = useState<Step>("form");
   const [error, setError] = useState<string | null>(null);
+  const [showDescription, setShowDescription] = useState(false);
+  const [showMilestones, setShowMilestones] = useState(false);
+  const [showDisputeHistory, setShowDisputeHistory] = useState(false);
 
   const pricePerToken = Number((1 - discountPct / 100).toFixed(4));
   const totalSupply = totalValue;
@@ -46,6 +50,11 @@ export default function TokenizePage() {
         tokenSymbol: tokenSymbol || defaultSymbol,
         totalSupply,
         pricePerToken,
+        exposure: {
+          showDescription,
+          showMilestones,
+          showDisputeHistory,
+        },
       });
       toast.success("Contract is now open for investors!");
       setStep("success");
@@ -119,10 +128,14 @@ export default function TokenizePage() {
       {step === "form" && (
         <>
           <SectionCard title="Contract Value" icon={<Coins className="h-5 w-5 text-brand" />} className="mb-6">
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               <div className="p-4 rounded-xl bg-surface-secondary text-center">
                 <p className="text-2xl font-bold">${totalValue.toLocaleString()}</p>
                 <p className="text-xs text-muted mt-1">Contract Value</p>
+              </div>
+              <div className="p-4 rounded-xl bg-surface-secondary text-center">
+                <p className="text-2xl font-bold">{totalSupply.toLocaleString()}</p>
+                <p className="text-xs text-muted mt-1">Total Supply</p>
               </div>
               <div className="p-4 rounded-xl bg-surface-secondary text-center">
                 <p className="text-2xl font-bold text-accent">${investorCost.toLocaleString()}</p>
@@ -142,7 +155,9 @@ export default function TokenizePage() {
               <input type="range" min={1} max={50} value={discountPct} onChange={(e) => setDiscountPct(Number(e.target.value))}
                 className="w-full h-2 rounded-full appearance-none cursor-pointer bg-surface-tertiary accent-accent" />
               <p className="text-xs text-muted mt-2">
-                Investors buy at <strong>${pricePerToken.toFixed(2)}</strong>/token. Each token has a face value of $1.00.
+                Each token has a face value of $1.00. A ${totalValue.toLocaleString()} contract creates{" "}
+                <strong>{totalSupply.toLocaleString()} tokens</strong>. Investors buy at{" "}
+                <strong>${pricePerToken.toFixed(2)}</strong>/token.
               </p>
             </div>
 
@@ -155,6 +170,27 @@ export default function TokenizePage() {
                 <label className="text-xs text-muted mb-1 block">Token Symbol</label>
                 <Input value={tokenSymbol} onChange={(e) => setTokenSymbol(e.target.value)} placeholder={defaultSymbol} className="w-full" />
               </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Investor Visibility" icon={<Eye className="h-5 w-5 text-brand" />} className="mb-6">
+            <p className="text-xs text-muted mb-4">
+              Control what investors can see. Contract title and progress are always visible.
+              Client identity is never exposed.
+            </p>
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={showDescription} onChange={(e) => setShowDescription(e.target.checked)} className="rounded border-border accent-accent h-4 w-4" />
+                <span className="text-sm">Show description to investors</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={showMilestones} onChange={(e) => setShowMilestones(e.target.checked)} className="rounded border-border accent-accent h-4 w-4" />
+                <span className="text-sm">Show milestone details to investors</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={showDisputeHistory} onChange={(e) => setShowDisputeHistory(e.target.checked)} className="rounded border-border accent-accent h-4 w-4" />
+                <span className="text-sm">Show dispute history to investors</span>
+              </label>
             </div>
           </SectionCard>
 
@@ -188,9 +224,17 @@ export default function TokenizePage() {
                 <span className="text-muted">Token Price</span>
                 <span className="font-semibold">${pricePerToken.toFixed(2)} <span className="text-xs text-muted">(face $1.00)</span></span>
               </div>
-              <div className="flex justify-between py-2">
+              <div className="flex justify-between py-2 border-b border-border/50">
                 <span className="text-muted">Investor Yield</span>
                 <span className="font-semibold text-success">+{investorYieldPct.toFixed(1)}%</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-muted">Visible to Investors</span>
+                <span className="font-semibold text-xs">
+                  {[showDescription && "Description", showMilestones && "Milestones", showDisputeHistory && "Disputes"]
+                    .filter(Boolean)
+                    .join(", ") || "Title & progress only"}
+                </span>
               </div>
             </div>
           </SectionCard>
