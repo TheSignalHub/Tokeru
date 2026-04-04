@@ -161,9 +161,9 @@ export default function TokenDetailPage() {
         backLabel="Back to Marketplace"
       />
 
-      <div className="grid lg:grid-cols-[1fr_380px] gap-8">
+      <div className="grid lg:grid-cols-[1fr_380px] gap-8 items-start">
         {/* -- Left Column -- */}
-        <div className="space-y-6">
+        <div className="space-y-6 min-w-0">
 
           {/* Token Header — always visible above tabs */}
           <SectionCard>
@@ -212,7 +212,7 @@ export default function TokenDetailPage() {
           </SectionCard>
 
           {/* Tab Bar */}
-          <div className="flex gap-1 border-b border-border">
+          <div className="flex gap-1 border-b border-border overflow-x-auto whitespace-nowrap">
             {(Object.keys(TAB_LABELS) as TabKey[]).map((tab) => (
               <button
                 key={tab}
@@ -231,7 +231,7 @@ export default function TokenDetailPage() {
 
           {/* Tab Content */}
           {activeTab === "overview" && (
-            <div className="space-y-6">
+            <div className="space-y-6 min-h-[400px]">
               {/* Token Economics */}
               <SectionCard title="Token Economics" icon={<TrendingUp className="h-5 w-5 text-accent" />}>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -265,7 +265,7 @@ export default function TokenDetailPage() {
           )}
 
           {activeTab === "milestones" && (
-            <div className="space-y-6">
+            <div className="space-y-6 min-h-[400px]">
               {/* Milestone summary row */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="p-3 rounded-lg bg-surface-secondary text-center">
@@ -341,7 +341,7 @@ export default function TokenDetailPage() {
           )}
 
           {activeTab === "agency" && (
-            <div className="space-y-6">
+            <div className="space-y-6 min-h-[400px]">
               <SectionCard title="Agency Profile" icon={<Building2 className="h-5 w-5 text-brand" />}>
                 <div className="flex items-center gap-4 mb-4">
                   <div className="h-14 w-14 rounded-full bg-brand/20 flex items-center justify-center text-lg font-bold text-brand">
@@ -406,7 +406,7 @@ export default function TokenDetailPage() {
           )}
 
           {activeTab === "security" && (
-            <div className="space-y-6">
+            <div className="space-y-6 min-h-[400px]">
               {/* Escrow mechanism */}
               <SectionCard title="Escrow Mechanism" icon={<ShieldCheck className="h-5 w-5 text-success" />}>
                 <div className="p-4 rounded-lg bg-success/5 border border-success/20 text-sm text-muted leading-relaxed">
@@ -525,12 +525,12 @@ export default function TokenDetailPage() {
         </div>
 
         {/* -- Right Column -- */}
-        <div className="space-y-6">
+        <div className="space-y-6 self-start sticky top-24 z-10 max-h-[calc(100vh-8rem)] overflow-y-auto">
 
           {/* Buy Card */}
           <SectionCard
             title="Invest in This Token"
-            className="border-accent/30 sticky top-24 z-10"
+            className="border-accent/30"
           >
             {!deployedOnChain ? (
               /* Contract not deployed on-chain */
