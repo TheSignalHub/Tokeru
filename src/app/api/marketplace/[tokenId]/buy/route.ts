@@ -52,15 +52,15 @@ export async function POST(
       return Response.json({ error: "Contract not deployed on-chain" }, { status: 400 });
     }
 
-    // Parse tokenization settings
-    let totalSupply = 100;
+    // Parse tokenization settings (1 token = $1 face value by default)
+    let totalSupply = contract.totalValue;
     let pricePerToken = 1;
     try {
       const exposure = JSON.parse(contract.tokenizationExposure);
-      totalSupply = exposure.totalSupply ?? 100;
-      pricePerToken = exposure.pricePerToken ?? (contract.totalValue / totalSupply);
+      totalSupply = exposure.totalSupply ?? contract.totalValue;
+      pricePerToken = exposure.pricePerToken ?? 1;
     } catch {
-      pricePerToken = contract.totalValue / totalSupply;
+      // use defaults
     }
 
     const { amount } = parsed.data;

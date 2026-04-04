@@ -51,12 +51,12 @@ export async function POST(
       return Response.json({ error: "Blockchain not configured" }, { status: 400 });
     }
 
-    // Parse tokenization settings
-    let totalSupply = 100;
+    // Parse tokenization settings (1 token = $1 face value by default)
+    let totalSupply = contract.totalValue;
     let pricePerToken = 1;
     try {
       const exposure = JSON.parse(contract.tokenizationExposure);
-      totalSupply = exposure.totalSupply ?? 100;
+      totalSupply = exposure.totalSupply ?? contract.totalValue;
       pricePerToken = exposure.pricePerToken ?? 1;
     } catch { /* use defaults */ }
 

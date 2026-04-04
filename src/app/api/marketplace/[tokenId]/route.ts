@@ -76,9 +76,9 @@ export async function GET(
       ? (JSON.parse(contract.tokenizationExposure as string) as TokenizationExposure)
       : DEFAULT_EXPOSURE;
 
-    // Price model: 100 tokens per contract, price = totalValue / 100
-    const totalSupply = 100;
-    const pricePerToken = contract.totalValue / 100;
+    // Read pricing from tokenization settings (1 token = $1 face value)
+    const totalSupply = exposure.totalSupply ?? contract.totalValue;
+    const pricePerToken = exposure.pricePerToken ?? 1;
 
     return Response.json({
       id: contract.id,

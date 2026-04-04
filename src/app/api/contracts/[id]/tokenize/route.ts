@@ -8,7 +8,7 @@ import { DEFAULT_EXPOSURE } from "@/lib/types/contract";
 const TokenizeBodySchema = z.object({
   tokenName: z.string().min(1).max(64),
   tokenSymbol: z.string().min(1).max(12),
-  totalSupply: z.number().int().positive().default(100),
+  totalSupply: z.number().positive(),
   pricePerToken: z.number().positive(),
   exposure: z
     .object({
