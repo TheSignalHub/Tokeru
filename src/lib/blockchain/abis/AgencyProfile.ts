@@ -71,6 +71,11 @@ export const AGENCY_PROFILE_ABI = [
             "internalType": "uint256"
           },
           {
+            "name": "totalContracts",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
             "name": "disputesWon",
             "type": "uint256",
             "internalType": "uint256"
@@ -126,6 +131,25 @@ export const AGENCY_PROFILE_ABI = [
   },
   {
     "type": "function",
+    "name": "getTotalContracts",
+    "inputs": [
+      {
+        "name": "agency",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "owner",
     "inputs": [],
     "outputs": [
@@ -155,6 +179,11 @@ export const AGENCY_PROFILE_ABI = [
       },
       {
         "name": "contractsFailed",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "totalContracts",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -389,6 +418,12 @@ export const AGENCY_PROFILE_ABI = [
       },
       {
         "name": "score",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "totalContracts",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"

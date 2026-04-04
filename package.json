@@ -14,7 +14,8 @@
     "deploy": "./scripts/deploy.sh",
     "contracts:build": "cd contracts && forge build",
     "contracts:test": "cd contracts && forge test -v",
-    "generate:abis": "cd contracts && forge build && cd .. && npx tsx scripts/generate-abis.ts"
+    "generate:abis": "cd contracts && forge build && cd .. && npx tsx scripts/generate-abis.ts",
+    "backfill:scores": "npx tsx scripts/backfill-scores.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.48",

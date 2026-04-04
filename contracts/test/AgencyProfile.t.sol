@@ -26,6 +26,7 @@ contract AgencyProfileTest is Test {
 
         AgencyProfile.Profile memory p = profile.getProfile(agency1);
         assertEq(p.contractsCompleted, 1, "contractsCompleted should be 1");
+        assertEq(p.totalContracts, 1, "totalContracts should be 1");
         assertEq(p.totalVolume, volume, "totalVolume should match");
         assertEq(p.score, score, "score should match");
         assertEq(p.contractsFailed, 0, "contractsFailed should be 0");
@@ -34,6 +35,7 @@ contract AgencyProfileTest is Test {
         profile.recordCompletion(agency1, 5_000 ether, 90);
         p = profile.getProfile(agency1);
         assertEq(p.contractsCompleted, 2, "contractsCompleted should be 2");
+        assertEq(p.totalContracts, 2, "totalContracts should be 2");
         assertEq(p.totalVolume, volume + 5_000 ether, "totalVolume should accumulate");
         assertEq(p.score, 90, "score should be updated to latest");
     }
@@ -45,6 +47,7 @@ contract AgencyProfileTest is Test {
 
         AgencyProfile.Profile memory p = profile.getProfile(agency1);
         assertEq(p.contractsFailed, 1, "contractsFailed should be 1");
+        assertEq(p.totalContracts, 1, "totalContracts should be 1 after failure");
         assertEq(p.score, 30, "score should match");
         assertEq(p.contractsCompleted, 0, "contractsCompleted should be 0");
 
@@ -52,6 +55,7 @@ contract AgencyProfileTest is Test {
         profile.recordFailure(agency1, 15);
         p = profile.getProfile(agency1);
         assertEq(p.contractsFailed, 2, "contractsFailed should be 2");
+        assertEq(p.totalContracts, 2, "totalContracts should be 2 after second failure");
         assertEq(p.score, 15, "score should be updated");
     }
 
@@ -144,6 +148,7 @@ contract AgencyProfileTest is Test {
 
         assertEq(p.contractsCompleted, 2, "2 completions");
         assertEq(p.contractsFailed, 1, "1 failure");
+        assertEq(p.totalContracts, 3, "3 total contracts (2 completed + 1 failed)");
         assertEq(p.disputesWon, 1, "1 dispute won");
         assertEq(p.disputesLost, 1, "1 dispute lost");
         assertEq(p.totalVolume, 15_000 ether, "total volume");
@@ -166,7 +171,7 @@ contract AgencyProfileTest is Test {
 
     function test_emitsProfileUpdated() public {
         vm.expectEmit(true, false, false, true);
-        emit AgencyProfile.ProfileUpdated(agency1, 80);
+        emit AgencyProfile.ProfileUpdated(agency1, 80, 1);
         profile.recordCompletion(agency1, 1 ether, 80);
     }
 

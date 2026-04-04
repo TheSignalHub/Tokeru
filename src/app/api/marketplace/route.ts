@@ -3,6 +3,7 @@ import { db, ensureInit } from "@/lib/db";
 import { CHAIN_CONFIG } from "@/lib/blockchain/config";
 import { getProvider } from "@/lib/blockchain/clients";
 import { getPoolAddress, getPoolInfo } from "@/lib/uniswap";
+import type { TokenizationExposure } from "@/lib/types";
 
 // Auth: public (demo) — add requireAuth() for production
 export async function GET() {
@@ -28,6 +29,16 @@ export async function GET() {
           : 0;
 
         const agencyProfile = await db.users.findByAddress(contract.agency);
+
+        // Parse tokenization exposure for token metadata
+        let exposure: TokenizationExposure | null = null;
+        try {
+          if (contract.tokenizationExposure) {
+            exposure = JSON.parse(contract.tokenizationExposure) as TokenizationExposure;
+          }
+        } catch {
+          // Invalid JSON — leave as null
+        }
 
         // Fetch Uniswap V3 pool info (best-effort, non-blocking)
         let hasPool = false;
@@ -63,6 +74,11 @@ export async function GET() {
           completedMilestones,
           totalMilestones,
           avgScore: completionScore,
+          // Token metadata from tokenizationExposure
+          tokenName: exposure?.tokenName ?? null,
+          tokenSymbol: exposure?.tokenSymbol ?? null,
+          pricePerToken: exposure?.pricePerToken ?? null,
+          totalSupply: exposure?.totalSupply ?? null,
           // Uniswap pool availability
           hasPool,
           poolLiquidity,

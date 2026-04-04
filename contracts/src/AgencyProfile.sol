@@ -7,6 +7,7 @@ contract AgencyProfile is Ownable {
     struct Profile {
         uint256 contractsCompleted;
         uint256 contractsFailed;
+        uint256 totalContracts;  // completed + failed + active (independently verifiable)
         uint256 disputesWon;
         uint256 disputesLost;
         uint256 totalVolume;
@@ -17,7 +18,7 @@ contract AgencyProfile is Ownable {
 
     mapping(address => Profile) public profiles;
 
-    event ProfileUpdated(address indexed agency, uint256 score);
+    event ProfileUpdated(address indexed agency, uint256 score, uint256 totalContracts);
     event ContractCompleted(address indexed agency, uint256 volume);
     event ContractFailed(address indexed agency);
     event DisputeResolved(address indexed agency, bool won);
@@ -29,18 +30,20 @@ contract AgencyProfile is Ownable {
     function recordCompletion(address agency, uint256 volume, uint256 newScore) external onlyOwner {
         Profile storage p = profiles[agency];
         p.contractsCompleted++;
+        p.totalContracts++;
         p.totalVolume += volume;
         p.score = newScore;
         emit ContractCompleted(agency, volume);
-        emit ProfileUpdated(agency, newScore);
+        emit ProfileUpdated(agency, newScore, p.totalContracts);
     }
 
     function recordFailure(address agency, uint256 newScore) external onlyOwner {
         Profile storage p = profiles[agency];
         p.contractsFailed++;
+        p.totalContracts++;
         p.score = newScore;
         emit ContractFailed(agency);
-        emit ProfileUpdated(agency, newScore);
+        emit ProfileUpdated(agency, newScore, p.totalContracts);
     }
 
     function recordDisputeResult(address agency, bool won, uint256 newScore) external onlyOwner {
@@ -49,7 +52,7 @@ contract AgencyProfile is Ownable {
         else p.disputesLost++;
         p.score = newScore;
         emit DisputeResolved(agency, won);
-        emit ProfileUpdated(agency, newScore);
+        emit ProfileUpdated(agency, newScore, p.totalContracts);
     }
 
     function setVerified(address agency, bool status) external onlyOwner {
@@ -68,6 +71,10 @@ contract AgencyProfile is Ownable {
 
     function getScore(address agency) external view returns (uint256) {
         return profiles[agency].score;
+    }
+
+    function getTotalContracts(address agency) external view returns (uint256) {
+        return profiles[agency].totalContracts;
     }
 
     function getAttestations(address agency) external view returns (bytes32[] memory) {
