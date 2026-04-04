@@ -132,7 +132,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               <ChevronDown className={`h-3.5 w-3.5 text-muted shrink-0 transition-transform ${userMenuOpen ? "rotate-180" : ""}`} />
             </button>
 
-            {/* Dropdown */}
+            {/* Dropdown — just Account + Sign out */}
             {userMenuOpen && (
               <div className="absolute left-0 right-0 top-full mt-1 rounded-lg border border-border/40 bg-background shadow-lg z-50 py-1">
                 <Link
@@ -146,22 +146,6 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                   <User className="h-4 w-4" />
                   Account
                 </Link>
-                <Link
-                  href="/help"
-                  onClick={() => {
-                    setUserMenuOpen(false);
-                    if (closeMobile) onClose();
-                  }}
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
-                >
-                  <HelpCircle className="h-4 w-4" />
-                  Help
-                </Link>
-                <div className="border-t border-border/40 my-1" />
-                <div className="px-3 py-2 flex items-center justify-between">
-                  <span className="text-xs text-muted">Theme</span>
-                  <ThemeToggle />
-                </div>
                 <div className="border-t border-border/40 my-1" />
                 <button
                   onClick={() => {
@@ -206,6 +190,26 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
         {mainNav.map((item) => navLink(item, closeMobile))}
       </nav>
+
+      {/* Bottom: Help + Theme */}
+      <div className="border-t border-border/40 px-3 py-2 space-y-0.5">
+        <Link
+          href="/help"
+          onClick={closeMobile ? onClose : undefined}
+          className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+            isActive(pathname, "/help")
+              ? "bg-accent/10 text-accent border-l-2 border-accent -ml-px"
+              : "text-muted hover:text-foreground hover:bg-surface-secondary"
+          }`}
+        >
+          <HelpCircle className="h-4 w-4 shrink-0" />
+          Help
+        </Link>
+        <div className="flex items-center justify-between px-3 py-1.5">
+          <span className="text-xs text-muted">Theme</span>
+          <ThemeToggle />
+        </div>
+      </div>
     </div>
   );
 
