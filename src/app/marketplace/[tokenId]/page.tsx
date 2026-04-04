@@ -239,18 +239,15 @@ export default function TokenDetailPage() {
               {apiToken.tokenName} ({apiToken.tokenSymbol})
             </p>
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted">
-              <a
-                href={`https://thesignal.directory/agency/${agencyId}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href={`/agency/${agencyId}`}
                 className="flex items-center gap-2 hover:text-accent"
               >
                 <div className="h-6 w-6 rounded-full bg-brand/20 flex items-center justify-center text-xs font-bold text-brand">
                   {agencyInitial}
                 </div>
                 {apiToken.agency.name ?? "Unknown Agency"}
-                <ExternalLink className="h-3 w-3" />
-              </a>
+              </Link>
               <span>
                 Contract Value:{" "}
                 <span className="font-medium text-foreground">
@@ -447,15 +444,12 @@ export default function TokenDetailPage() {
 
                 {/* Link to full profile */}
                 <div className="mt-4">
-                  <a
-                    href={`https://thesignal.directory/agency/${agencyId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Link
+                    href={`/agency/${agencyId}`}
                     className="inline-flex items-center gap-2 text-sm text-accent hover:underline"
                   >
                     View full agency profile
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
+                  </Link>
                 </div>
               </SectionCard>
             </div>
@@ -817,8 +811,8 @@ export default function TokenDetailPage() {
           )}
 
           {/* Condensed Agency link */}
-          <button
-            onClick={() => setActiveTab("agency")}
+          <Link
+            href={`/agency/${agencyId}`}
             className="w-full flex items-center gap-3 p-4 rounded-xl border border-border bg-surface hover:border-brand/50 transition-colors text-left"
           >
             <div className="h-8 w-8 rounded-full bg-brand/20 flex items-center justify-center text-xs font-bold text-brand">
@@ -835,7 +829,7 @@ export default function TokenDetailPage() {
             {apiToken.agency.verified && (
               <CheckCircle className="h-4 w-4 text-brand flex-shrink-0" />
             )}
-          </button>
+          </Link>
 
           {/* Contract Info */}
           <SectionCard title="Contract Info">

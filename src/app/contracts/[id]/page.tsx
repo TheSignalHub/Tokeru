@@ -942,9 +942,9 @@ export default function ContractDetailPage() {
             <span className="inline-flex items-center gap-1.5">
               Agency:{" "}
               {userRole === "agency" ? (
-                <Link href="/profile" className="font-semibold text-accent hover:underline">You</Link>
+                <Link href={`/agency/${contract.agency}`} className="font-semibold text-accent hover:underline">You</Link>
               ) : (
-                <span className="font-semibold text-foreground">{truncateMiddle(contract.agency, 6, 4)}</span>
+                <Link href={`/agency/${contract.agency}`} className="font-semibold text-foreground hover:text-accent transition-colors">{truncateMiddle(contract.agency, 6, 4)}</Link>
               )}
               {agencyVerification?.verified && agencyVerification.easScanUrl && (
                 <a

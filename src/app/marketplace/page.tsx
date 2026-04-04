@@ -20,6 +20,7 @@ type ActiveListing = {
   title: string;
   category: string;
   agencyName: string;
+  agencyAddress: string;
   agencyVerified: boolean;
   agencyScore: number | null;
   score: number;
@@ -74,6 +75,7 @@ export default function MarketplacePage() {
         title: c.title,
         category: c.category.charAt(0).toUpperCase() + c.category.slice(1),
         agencyName: c.agency.name ?? "Unknown Agency",
+        agencyAddress: c.agency.address,
         agencyVerified: c.agency.verified,
         agencyScore: c.agency.score,
         score: c.avgScore ?? 0,
@@ -250,7 +252,14 @@ export default function MarketplacePage() {
                           <div>
                             <h3 className="font-bold text-base leading-snug line-clamp-2 group-hover:text-accent transition-colors">{c.title}</h3>
                             <p className="text-xs text-muted mt-1 truncate flex items-center gap-1">
-                              by <span className="font-semibold text-foreground">{c.agencyName}</span>
+                              by{" "}
+                              <Link
+                                href={`/agency/${c.agencyAddress}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="font-semibold text-foreground hover:text-accent transition-colors"
+                              >
+                                {c.agencyName}
+                              </Link>
                               {c.agencyVerified && <CheckCircle className="h-3 w-3 text-success shrink-0" />}
                             </p>
                           </div>

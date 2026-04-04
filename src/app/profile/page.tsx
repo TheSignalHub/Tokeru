@@ -6,14 +6,11 @@ import {
   CardContent,
   Chip,
   Spinner,
-  Tooltip,
   Button,
   Input,
 } from "@heroui/react";
 import {
-  CheckCircle2,
   ShieldCheck,
-  UserCircle,
   Pencil,
   Upload,
   FileCheck,
@@ -30,29 +27,9 @@ import {
   SectionCard,
   LabeledProgress,
   StatusBadge,
-  EmptyState,
   FormField,
   AgencySetupSection,
 } from "@/components/ui";
-
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
-interface TierInfo {
-  name: string;
-  icon: string;
-  color: "warning" | "accent" | "success" | "default";
-  nextHint: string;
-}
-
-interface Achievement {
-  id: string;
-  name: string;
-  icon: string;
-  earned: boolean;
-  progress: string;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -67,96 +44,6 @@ const DOCUMENT_LABELS = [
 ];
 
 /* ------------------------------------------------------------------ */
-/*  Tier system                                                        */
-/* ------------------------------------------------------------------ */
-
-function getTier(score: number): TierInfo {
-  if (score >= 96)
-    return {
-      name: "Elite",
-      icon: "\ud83d\udc51",
-      color: "warning",
-      nextHint: `${score - 95} points above Elite threshold`,
-    };
-  if (score >= 81)
-    return {
-      name: "Diamond",
-      icon: "\ud83d\udc8e",
-      color: "accent",
-      nextHint: `${96 - score} pts to Elite`,
-    };
-  if (score >= 61)
-    return {
-      name: "Established",
-      icon: "\ud83c\udf33",
-      color: "success",
-      nextHint: `${81 - score} pts to Diamond`,
-    };
-  if (score >= 31)
-    return {
-      name: "Growing",
-      icon: "\ud83c\udf3f",
-      color: "success",
-      nextHint: `${61 - score} pts to Established`,
-    };
-  return {
-    name: "Seedling",
-    icon: "\ud83c\udf31",
-    color: "default",
-    nextHint: `${31 - score} pts to Growing`,
-  };
-}
-
-/* ------------------------------------------------------------------ */
-/*  Achievement definitions                                            */
-/* ------------------------------------------------------------------ */
-
-function getAchievements(
-  completed: number,
-  disputesLost: number,
-  volume: number,
-  streak: number,
-): Achievement[] {
-  return [
-    {
-      id: "first",
-      name: "First Contract",
-      icon: "\ud83c\udfaf",
-      earned: completed >= 1,
-      progress: `${Math.min(completed, 1)}/1 contracts`,
-    },
-    {
-      id: "clean",
-      name: "Clean Record",
-      icon: "\u26a1",
-      earned: disputesLost === 0 && completed >= 3,
-      progress: disputesLost === 0 ? "\u2713" : "Has disputes",
-    },
-    {
-      id: "10x",
-      name: "10x Completed",
-      icon: "\ud83c\udfc6",
-      earned: completed >= 10,
-      progress: `${Math.min(completed, 10)}/10 contracts`,
-    },
-    {
-      id: "volume",
-      name: "$100K Volume",
-      icon: "\ud83d\udcb0",
-      earned: volume >= 100000,
-      progress: `$${(volume / 1000).toFixed(0)}K/$100K`,
-    },
-    {
-      id: "streak",
-      name: "Hot Streak",
-      icon: "\ud83d\udd25",
-      earned: streak >= 5,
-      progress: `${Math.min(streak, 5)}/5 streak`,
-    },
-  ];
-}
-
-/* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
@@ -168,104 +55,6 @@ function formatCurrency(n: number): string {
 function truncateAddress(addr: string): string {
   if (addr.length <= 12) return addr;
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Score Ring (SVG)                                                    */
-/* ------------------------------------------------------------------ */
-
-function ScoreRing({ score, size = 120, initials = "?" }: { score: number; size?: number; initials?: string }) {
-  const strokeWidth = 6;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (score / 100) * circumference;
-
-  return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg
-        width={size}
-        height={size}
-        className="transform -rotate-90"
-        aria-label={`Score: ${score} out of 100`}
-      >
-        {/* Background circle */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={strokeWidth}
-          className="text-border"
-        />
-        {/* Score arc */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="url(#scoreGradient)"
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          style={{
-            transition: "stroke-dashoffset 1s ease-out",
-          }}
-        />
-        <defs>
-          <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(var(--accent))" />
-            <stop offset="100%" stopColor="hsl(var(--success))" />
-          </linearGradient>
-        </defs>
-      </svg>
-      {/* Avatar fallback in center */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="w-[calc(100%-20px)] h-[calc(100%-20px)] rounded-full bg-surface-secondary flex items-center justify-center">
-          <span className="text-2xl font-bold text-foreground">{initials}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Achievement Badge                                                  */
-/* ------------------------------------------------------------------ */
-
-function AchievementBadge({ achievement }: { achievement: Achievement }) {
-  return (
-    <Tooltip>
-      <Tooltip.Trigger>
-        <div
-          className={`flex flex-col items-center gap-1.5 min-w-[100px] p-4 rounded-xl border transition-all cursor-default ${
-            achievement.earned
-              ? "border-accent/40 bg-accent/5 shadow-sm"
-              : "border-dashed border-border bg-surface opacity-40"
-          }`}
-        >
-          <span className="text-2xl">{achievement.icon}</span>
-          <span className="text-[11px] font-semibold text-foreground leading-tight text-center">
-            {achievement.name}
-          </span>
-          {achievement.earned ? (
-            <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-          ) : (
-            <span className="text-[10px] text-muted font-mono">
-              {achievement.progress}
-            </span>
-          )}
-        </div>
-      </Tooltip.Trigger>
-      <Tooltip.Content className="bg-surface border border-border text-foreground px-3 py-2 text-xs rounded-lg shadow-lg">
-        <Tooltip.Arrow />
-        {achievement.earned
-          ? `Earned: ${achievement.name}`
-          : `Progress: ${achievement.progress}`}
-      </Tooltip.Content>
-    </Tooltip>
-  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -359,20 +148,17 @@ function DocumentUploadSection({
     setLastHash(null);
     try {
       await onUpload(file, selectedLabel);
-      // After upload, show the hash
       setLastHash("Uploaded successfully");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
-      // Reset file input
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   return (
     <div className="space-y-4">
-      {/* Existing attestations */}
       {attestations.length > 0 && (
         <div className="space-y-2">
           {attestations.map((att, idx) => (
@@ -407,7 +193,6 @@ function DocumentUploadSection({
         </div>
       )}
 
-      {/* Upload form */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
         <FormField label="Document Type">
           <select
@@ -595,7 +380,7 @@ export default function ProfilePage() {
 
   const [editing, setEditing] = useState(false);
 
-  // Wallet balance — query chain RPC
+  // Wallet balance
   const [balance, setBalance] = useState<string | null>(null);
 
   useEffect(() => {
@@ -631,19 +416,14 @@ export default function ProfilePage() {
     () => apiContracts.filter((c) => c.status === "failed").length,
     [apiContracts],
   );
-  const disputesWon = 0;
-  const disputesLost = 0;
   const totalVolume = useMemo(
     () => apiContracts.reduce((sum, c) => sum + c.totalValue, 0),
     [apiContracts],
   );
-  const streak = completed; // simplified streak = completed count
   const reputationScore = useMemo(() => {
-    // Use the real score from the DB (computed by computeAgencyScore())
     if (profile?.agencyProfile?.score != null) {
       return profile.agencyProfile.score;
     }
-    // Fallback: simple completion rate if no agency profile score
     if (apiContracts.length === 0) return 0;
     const completionRate =
       completed + failed > 0 ? (completed / (completed + failed)) * 100 : 0;
@@ -658,23 +438,12 @@ export default function ProfilePage() {
     );
   }, [apiContracts]);
 
-  const tier = getTier(reputationScore);
-  const achievements = getAchievements(
-    completed,
-    disputesLost,
-    totalVolume,
-    streak,
-  );
-
   /* ---- Score breakdown ---- */
   const completionRate =
     completed + failed > 0
       ? Math.round((completed / (completed + failed)) * 100)
       : 0;
-  const disputeWinRate =
-    disputesWon + disputesLost > 0
-      ? Math.round((disputesWon / (disputesWon + disputesLost)) * 100)
-      : 0;
+  const disputeWinRate = 0;
 
   /* ---- Contract history ---- */
   const contractHistory = useMemo(() => {
@@ -690,22 +459,14 @@ export default function ProfilePage() {
 
   /* ---- Profile display values ---- */
   const profileName = profile?.name || "Your Profile";
-  const profileInitials = profile?.name
-    ? profile.name
-        .split(" ")
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : "U";
   const attestations = profile?.agencyProfile?.attestations ?? [];
 
   if (loading || profileLoading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <PageHeader
           title="Profile"
-          description="Your reputation, achievements, and history"
+          description="Your account settings and agency profile"
           backHref="/dashboard"
           backLabel="Dashboard"
         />
@@ -716,165 +477,198 @@ export default function ProfilePage() {
     );
   }
 
-  // No contracts at all — show empty profile state
-  if (apiContracts.length === 0) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <PageHeader
-          title="Profile"
-          description="Your reputation, achievements, and history"
-          backHref="/dashboard"
-          backLabel="Dashboard"
-        />
-        <EmptyState
-          icon={<UserCircle className="h-12 w-12" />}
-          title="Your profile is empty"
-          description="Complete your first contract to build your reputation."
-          action={
-            <a
-              href="/contracts/new"
-              className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md bg-accent text-accent-foreground font-medium shadow-sm active:scale-[0.98] transition-all"
-            >
-              Create Your First Contract
-            </a>
-          }
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <PageHeader
         title="Profile"
-        description="Your reputation, achievements, and history"
+        description="Your account settings and agency profile"
         backHref="/dashboard"
         backLabel="Dashboard"
       />
 
-      {/* ---------------------------------------------------------------- */}
-      {/*  Header Section: Avatar with score ring                          */}
-      {/* ---------------------------------------------------------------- */}
-      <Card className="border border-border mb-8">
-        <CardContent className="p-8">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-            {/* Score Ring + Avatar */}
-            <ScoreRing score={reputationScore} size={120} initials={profileInitials} />
-
-            {/* Identity Info */}
-            <div className="flex-1 text-center sm:text-left">
-              <div className="flex items-center justify-center sm:justify-start gap-3 flex-wrap">
-                <h2 className="text-2xl font-bold text-foreground tracking-tight">
-                  {profileName}
-                </h2>
-                <Chip
-                  size="sm"
-                  color={tier.color}
-                  variant="soft"
-                  className="font-bold text-xs gap-1"
-                >
-                  <span>{tier.icon}</span> {tier.name}
-                </Chip>
+      {/* ================================================================ */}
+      {/*  Two-column layout                                               */}
+      {/* ================================================================ */}
+      <div className="grid lg:grid-cols-2 gap-6 mb-8">
+        {/* ---- Left column: Personal info + KYB ---- */}
+        <div className="space-y-6">
+          {/* Personal info card */}
+          <Card className="border border-border">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-foreground">Personal Info</h2>
+                {!editing && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onPress={() => setEditing(true)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit
+                  </Button>
+                )}
               </div>
 
-              {profile?.email && (
-                <p className="text-sm text-muted mt-1">{profile.email}</p>
-              )}
-
-              {walletAddress && (
-                <div className="flex items-center justify-center sm:justify-start gap-3 mt-1">
-                  <p className="text-xs text-muted font-mono">
-                    {truncateAddress(walletAddress)}
-                  </p>
-                  {balance !== null && (
-                    <Chip size="sm" variant="soft" color="success" className="text-xs font-mono">
-                      {parseFloat(balance).toLocaleString(undefined, { maximumFractionDigits: 4 })} ETH
-                    </Chip>
+              {editing ? (
+                <EditProfileForm
+                  initialName={profile?.name ?? ""}
+                  initialEmail={profile?.email ?? ""}
+                  onSave={async (data) => {
+                    await updateProfile(data);
+                    setEditing(false);
+                  }}
+                  onCancel={() => setEditing(false)}
+                />
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs text-muted uppercase tracking-wider font-semibold">Name</p>
+                    <p className="text-sm font-medium text-foreground mt-0.5">{profileName}</p>
+                  </div>
+                  {profile?.email && (
+                    <div>
+                      <p className="text-xs text-muted uppercase tracking-wider font-semibold">Email</p>
+                      <p className="text-sm text-foreground mt-0.5">{profile.email}</p>
+                    </div>
                   )}
+                  {walletAddress && (
+                    <div>
+                      <p className="text-xs text-muted uppercase tracking-wider font-semibold">Wallet</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-sm text-foreground font-mono">{truncateAddress(walletAddress)}</p>
+                        {balance !== null && (
+                          <Chip size="sm" variant="soft" color="success" className="text-xs font-mono">
+                            {parseFloat(balance).toLocaleString(undefined, { maximumFractionDigits: 4 })} ETH
+                          </Chip>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-muted uppercase tracking-wider font-semibold">Reputation Score</p>
+                    <p className="text-sm font-bold text-foreground mt-0.5">{reputationScore}/100</p>
+                  </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
 
-              <div className="flex items-center justify-center sm:justify-start gap-4 mt-3">
-                <span className="text-sm font-semibold text-foreground">
-                  Score: {reputationScore}/100
-                </span>
+          {/* Stats summary */}
+          <Card className="border border-border">
+            <CardContent className="p-6">
+              <h2 className="text-lg font-bold text-foreground mb-4">Stats</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-wider font-semibold">Contracts</p>
+                  <p className="text-xl font-bold text-foreground mt-0.5">{apiContracts.length}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-wider font-semibold">Completed</p>
+                  <p className="text-xl font-bold text-foreground mt-0.5">{completed}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-wider font-semibold">Total Volume</p>
+                  <p className="text-xl font-bold text-foreground mt-0.5">{formatCurrency(totalVolume)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-wider font-semibold">On-Time</p>
+                  <p className="text-xl font-bold text-foreground mt-0.5">{onTimeDelivery}%</p>
+                </div>
               </div>
+            </CardContent>
+          </Card>
 
-              <p className="text-xs text-muted mt-1.5">{tier.nextHint}</p>
-
-              {streak > 0 && (
-                <div className="flex items-center justify-center sm:justify-start gap-1.5 mt-2 text-warning">
-                  <span className="text-sm">{"\ud83d\udd25"}</span>
-                  <span className="text-xs font-semibold">
-                    {streak} contract streak
-                  </span>
-                </div>
-              )}
-
-              {/* Edit Profile Button */}
-              {!editing && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="mt-3"
-                  onPress={() => setEditing(true)}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  Edit Profile
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Inline Edit Form */}
-          {editing && (
-            <div className="mt-6 pt-6 border-t border-border">
-              <EditProfileForm
-                initialName={profile?.name ?? ""}
-                initialEmail={profile?.email ?? ""}
-                onSave={async (data) => {
-                  await updateProfile(data);
-                  setEditing(false);
-                }}
-                onCancel={() => setEditing(false)}
+          {/* KYB Verification */}
+          {profile?.roles?.includes("agency") && walletAddress && (
+            <SectionCard
+              title="KYB Verification"
+              icon={<BadgeCheck className="h-4 w-4 text-accent" />}
+            >
+              <KYBVerificationSection
+                walletAddress={walletAddress}
+                agencyProfile={profile?.agencyProfile}
+                onVerified={refreshProfile}
               />
-            </div>
+            </SectionCard>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* ---------------------------------------------------------------- */}
-      {/*  Agency Profile Setup                                            */}
-      {/* ---------------------------------------------------------------- */}
-      {profile?.roles?.includes("agency") && (
-        <AgencySetupSection
-          agencyProfile={profile?.agencyProfile}
-          team={team}
-          onSaveProfile={async (data) => {
-            try {
-              await updateAgencyProfile(data);
-              toast.success("Agency profile saved");
-            } catch (err) {
-              toast.error("Failed to save agency profile");
-              throw err;
-            }
-          }}
-          onInviteMember={async (email, name, role) => {
-            try {
-              await inviteTeamMember({ email, name, role });
-              toast.success("Invite sent");
-            } catch (err) {
-              toast.error("Failed to send invite");
-              throw err;
-            }
-          }}
-          onRefresh={refreshProfile}
-        />
-      )}
+        {/* ---- Right column: Agency profile + Documents ---- */}
+        <div className="space-y-6">
+          {/* Agency Profile Setup */}
+          {profile?.roles?.includes("agency") && (
+            <AgencySetupSection
+              agencyProfile={profile?.agencyProfile}
+              team={team}
+              onSaveProfile={async (data) => {
+                try {
+                  await updateAgencyProfile(data);
+                  toast.success("Agency profile saved");
+                } catch (err) {
+                  toast.error("Failed to save agency profile");
+                  throw err;
+                }
+              }}
+              onInviteMember={async (email, name, role) => {
+                try {
+                  await inviteTeamMember({ email, name, role });
+                  toast.success("Invite sent");
+                } catch (err) {
+                  toast.error("Failed to send invite");
+                  throw err;
+                }
+              }}
+              onRefresh={refreshProfile}
+            />
+          )}
 
-      {/* ---------------------------------------------------------------- */}
-      {/*  Contracts (most important — shown first)                        */}
-      {/* ---------------------------------------------------------------- */}
+          {/* Legal Documents */}
+          <SectionCard
+            title="Legal Documents"
+            icon={<ShieldCheck className="h-4 w-4 text-accent" />}
+          >
+            <DocumentUploadSection
+              attestations={attestations}
+              onUpload={async (file, label) => {
+                try {
+                  await uploadDocument(file, label);
+                  toast.success("Document uploaded");
+                } catch (err) {
+                  toast.error("Failed to upload document");
+                  throw err;
+                }
+              }}
+            />
+          </SectionCard>
+        </div>
+      </div>
+
+      {/* ================================================================ */}
+      {/*  Score Breakdown (full width)                                     */}
+      {/* ================================================================ */}
+      <SectionCard title="Score Breakdown" className="mb-6">
+        <div className="space-y-5">
+          <LabeledProgress
+            label="Completion Rate"
+            value={completionRate}
+            color={completionRate >= 80 ? "success" : "warning"}
+          />
+          <LabeledProgress
+            label="Dispute Win Rate"
+            value={disputeWinRate}
+            color={disputeWinRate >= 80 ? "success" : "warning"}
+          />
+          <LabeledProgress
+            label="On-Time Delivery"
+            value={onTimeDelivery}
+            color={onTimeDelivery >= 80 ? "success" : "warning"}
+          />
+        </div>
+      </SectionCard>
+
+      {/* ================================================================ */}
+      {/*  Contract History (full width)                                    */}
+      {/* ================================================================ */}
       <SectionCard title="Contract History" className="mb-6">
         {contractHistory.length > 0 ? (
           <div className="overflow-x-auto -mx-6 -mb-4">
@@ -938,82 +732,6 @@ export default function ProfilePage() {
         ) : (
           <p className="text-sm text-muted text-center py-8">No contract history yet.</p>
         )}
-      </SectionCard>
-
-      {/* ---------------------------------------------------------------- */}
-      {/*  Score Breakdown                                                 */}
-      {/* ---------------------------------------------------------------- */}
-      <SectionCard title="Score Breakdown" className="mb-6">
-        <div className="space-y-5">
-          <LabeledProgress
-            label="Completion Rate"
-            value={completionRate}
-            color={completionRate >= 80 ? "success" : "warning"}
-          />
-          <LabeledProgress
-            label="Dispute Win Rate"
-            value={disputeWinRate}
-            color={disputeWinRate >= 80 ? "success" : "warning"}
-          />
-          <LabeledProgress
-            label="On-Time Delivery"
-            value={onTimeDelivery}
-            color={onTimeDelivery >= 80 ? "success" : "warning"}
-          />
-        </div>
-      </SectionCard>
-
-      {/* ---------------------------------------------------------------- */}
-      {/*  Achievements                                                    */}
-      {/* ---------------------------------------------------------------- */}
-      <div className="mb-8">
-        <h3 className="text-sm font-semibold text-muted uppercase tracking-wider mb-3">
-          Achievements
-        </h3>
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-          {achievements.map((a) => (
-            <AchievementBadge key={a.id} achievement={a} />
-          ))}
-        </div>
-      </div>
-
-      {/* ---------------------------------------------------------------- */}
-      {/*  KYB Verification (EAS Attestation)                              */}
-      {/* ---------------------------------------------------------------- */}
-      {profile?.roles?.includes("agency") && walletAddress && (
-        <SectionCard
-          title="KYB Verification"
-          icon={<BadgeCheck className="h-4 w-4 text-accent" />}
-          className="mb-6"
-        >
-          <KYBVerificationSection
-            walletAddress={walletAddress}
-            agencyProfile={profile?.agencyProfile}
-            onVerified={refreshProfile}
-          />
-        </SectionCard>
-      )}
-
-      {/* ---------------------------------------------------------------- */}
-      {/*  Legal Documents / Attestations                                  */}
-      {/* ---------------------------------------------------------------- */}
-      <SectionCard
-        title="Legal Documents"
-        icon={<ShieldCheck className="h-4 w-4 text-accent" />}
-        className="mb-8"
-      >
-        <DocumentUploadSection
-          attestations={attestations}
-          onUpload={async (file, label) => {
-            try {
-              await uploadDocument(file, label);
-              toast.success("Document uploaded");
-            } catch (err) {
-              toast.error("Failed to upload document");
-              throw err;
-            }
-          }}
-        />
       </SectionCard>
     </div>
   );
