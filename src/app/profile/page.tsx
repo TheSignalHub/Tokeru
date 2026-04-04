@@ -18,6 +18,9 @@ import {
   Upload,
   FileCheck,
   FileClock,
+  BadgeCheck,
+  ExternalLink,
+  Loader2,
 } from "lucide-react";
 import { useProfile } from "@/hooks/use-profile";
 import { useApi } from "@/hooks/use-api";
@@ -447,6 +450,125 @@ function DocumentUploadSection({
 }
 
 /* ------------------------------------------------------------------ */
+/*  KYB Verification Section                                           */
+/* ------------------------------------------------------------------ */
+
+function KYBVerificationSection({
+  walletAddress,
+  agencyProfile,
+  onVerified,
+}: {
+  walletAddress: string;
+  agencyProfile?: { verified?: boolean; companyName?: string; attestations?: { label: string; verified: boolean; hash?: string }[] };
+  onVerified: () => void;
+}) {
+  const [jurisdiction, setJurisdiction] = useState("");
+  const [companyName, setCompanyName] = useState(agencyProfile?.companyName ?? "");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ attestationUid: string; easScanUrl: string } | null>(null);
+
+  const kybAttestation = agencyProfile?.attestations?.find(
+    (a) => a.label === "KYB Verification" && a.hash,
+  );
+  const isVerified = agencyProfile?.verified && kybAttestation;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!jurisdiction.trim() || !companyName.trim()) return;
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/users/${walletAddress}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jurisdiction: jurisdiction.trim(), companyName: companyName.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Verification failed");
+      setResult({ attestationUid: data.attestationUid, easScanUrl: data.easScanUrl });
+      onVerified();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to verify");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (isVerified || result) {
+    const uid = result?.attestationUid ?? kybAttestation?.hash ?? "";
+    const scanUrl = result?.easScanUrl ?? `https://base-sepolia.easscan.org/attestation/view/${uid}`;
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-3 p-4 rounded-xl border border-success/30 bg-success/5">
+          <BadgeCheck className="h-5 w-5 text-success shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-success">Verified Agency</p>
+            <p className="text-xs text-muted font-mono truncate mt-0.5">
+              Attestation: {uid.slice(0, 10)}...{uid.slice(-6)}
+            </p>
+          </div>
+          <a
+            href={scanUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-accent hover:underline shrink-0"
+          >
+            View on EASScan <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <p className="text-sm text-muted">
+        Verify your agency with an on-chain EAS attestation. This creates a public, verifiable proof of your business identity.
+      </p>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <FormField label="Company Name">
+          <Input
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            placeholder="Your company name"
+            className="max-w-[240px]"
+          />
+        </FormField>
+        <FormField label="Jurisdiction">
+          <Input
+            value={jurisdiction}
+            onChange={(e) => setJurisdiction(e.target.value)}
+            placeholder="e.g. US, EU, SG"
+            className="max-w-[180px]"
+          />
+        </FormField>
+      </div>
+      {error && <p className="text-sm text-danger">{error}</p>}
+      <Button
+        type="submit"
+        variant="primary"
+        size="sm"
+        isDisabled={submitting || !jurisdiction.trim() || !companyName.trim()}
+      >
+        {submitting ? (
+          <>
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Verifying...
+          </>
+        ) : (
+          <>
+            <BadgeCheck className="h-3.5 w-3.5" />
+            Verify Your Agency
+          </>
+        )}
+      </Button>
+    </form>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -836,6 +958,23 @@ export default function ProfilePage() {
           ))}
         </div>
       </div>
+
+      {/* ---------------------------------------------------------------- */}
+      {/*  KYB Verification (EAS Attestation)                              */}
+      {/* ---------------------------------------------------------------- */}
+      {profile?.roles?.includes("agency") && walletAddress && (
+        <SectionCard
+          title="KYB Verification"
+          icon={<BadgeCheck className="h-4 w-4 text-accent" />}
+          className="mb-6"
+        >
+          <KYBVerificationSection
+            walletAddress={walletAddress}
+            agencyProfile={profile?.agencyProfile}
+            onVerified={refreshProfile}
+          />
+        </SectionCard>
+      )}
 
       {/* ---------------------------------------------------------------- */}
       {/*  Legal Documents / Attestations                                  */}

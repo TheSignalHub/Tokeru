@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.48",
+    "@ethereum-attestation-service/eas-sdk": "^2.9.0",
     "@heroui/react": "^3.0.1",
     "@heroui/styles": "^3.0.1",
     "@neondatabase/serverless": "^1.0.2",

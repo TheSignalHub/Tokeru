@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, CheckCircle, Clock, AlertTriangle, XCircle,
-  Coins, Upload, ExternalLink, Loader2, Eye, ShieldAlert, Wallet, Zap, Mail,
+  Coins, Upload, ExternalLink, Loader2, Eye, ShieldAlert, Wallet, Zap, Mail, BadgeCheck,
 } from "lucide-react";
 import {
   useContract,
@@ -13,7 +13,7 @@ import {
   rejectMilestone,
 } from "@/hooks/use-contracts";
 import { useAuth } from "@/hooks/use-auth";
-import { postApi } from "@/hooks/use-api";
+import { postApi, useApi } from "@/hooks/use-api";
 import {
   Card, CardContent, CardHeader, Button, Spinner, TextArea,
 } from "@heroui/react";
@@ -53,6 +53,16 @@ export default function ContractDetailPage() {
   const exposure = contract?.tokenizationExposure
     ? (JSON.parse(contract.tokenizationExposure) as { showDescription: boolean; showMilestones: boolean; showDisputeHistory: boolean })
     : { showDescription: false, showMilestones: false, showDisputeHistory: false };
+
+  // ─── Agency verification status ──────────────────────────────────────────
+  const agencyVerifyUrl = contract?.agency
+    ? `/api/users/${contract.agency}/verify`
+    : null;
+  const { data: agencyVerification } = useApi<{
+    verified: boolean;
+    attestationUid: string | null;
+    easScanUrl: string | null;
+  }>(agencyVerifyUrl);
 
   // ─── Handlers ───────────────────────────────────────────────────────────────
   const handleApprove = async (milestoneId: number) => {
@@ -208,7 +218,7 @@ export default function ContractDetailPage() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
-            <span>
+            <span className="inline-flex items-center gap-1.5">
               Agency:{" "}
               <span
                 className={`font-semibold ${userRole === "agency" ? "text-accent" : "text-foreground"}`}
@@ -217,6 +227,18 @@ export default function ContractDetailPage() {
                   ? "You"
                   : truncateMiddle(contract.agency, 6, 4)}
               </span>
+              {agencyVerification?.verified && agencyVerification.easScanUrl && (
+                <a
+                  href={agencyVerification.easScanUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-semibold hover:bg-success/20 transition-colors"
+                  title="Verified on EAS"
+                >
+                  <BadgeCheck className="h-3 w-3" />
+                  Verified
+                </a>
+              )}
             </span>
             {userRole !== "investor" && userRole !== "public" && (
               <>
