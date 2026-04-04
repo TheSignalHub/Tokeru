@@ -2,19 +2,38 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { ArrowUpDown, SlidersHorizontal, Store, CheckCircle } from "lucide-react";
+import {
+  ArrowUpDown,
+  SlidersHorizontal,
+  Store,
+  CheckCircle,
+  TrendingUp,
+  Clock,
+  DollarSign,
+  ArrowRight,
+} from "lucide-react";
 import { useMarketplace, type MarketplaceListing } from "@/hooks/use-marketplace";
-import { Card, CardContent, Button, Chip, Spinner, SearchField, Select, SelectTrigger, SelectValue, SelectIndicator, SelectPopover, ListBox } from "@heroui/react";
+import {
+  Card,
+  CardContent,
+  Button,
+  Chip,
+  Spinner,
+  SearchField,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectIndicator,
+  SelectPopover,
+  ListBox,
+} from "@heroui/react";
 import { motion } from "framer-motion";
 import { formatCurrency } from "@/lib/utils/format";
-import { ScoreBadge } from "@/components/ui/score-badge";
 import { RiskTierBadge } from "@/components/ui/risk-tier-badge";
-import { ExpectedReturnBadge } from "@/components/ui/expected-return-badge";
-import { LabeledProgress } from "@/components/ui/labeled-progress";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getRiskTier } from "@/lib/scoring";
 
-// ─── Local display type ──────────────────────────────────────────────────────
+// ── Local display type ────────────────────────────────────────────────────────
 type ActiveListing = {
   id: string;
   title: string;
@@ -24,25 +43,38 @@ type ActiveListing = {
   agencyVerified: boolean;
   agencyScore: number | null;
   score: number;
+  totalValue: number;
   value: string;
   tokenPrice: string;
   pricePerToken: number;
+  totalSupply: number;
   completedMilestones: number;
   totalMilestones: number;
   progress: number;
+  expectedReturn: number;
 };
 
-// ─── Animation variants ──────────────────────────────────────────────────────
-const container = { hidden: {}, show: { transition: { staggerChildren: 0.07 } } };
-const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 220, damping: 22 } } };
+// ── Animation variants ────────────────────────────────────────────────────────
+const container = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.07 } },
+};
+const item = {
+  hidden: { opacity: 0, y: 16 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring" as const, stiffness: 220, damping: 22 },
+  },
+};
 
-const CATEGORIES = ["All Categories", "Development", "Design", "Marketing", "Legal"];
-const SCORE_FILTERS = [
-  { label: "Any Score", min: 0 },
-  { label: "Score: 80+", min: 80 },
-  { label: "Score: 90+", min: 90 },
+const CATEGORIES = [
+  "All Categories",
+  "Development",
+  "Design",
+  "Marketing",
+  "Legal",
 ];
-
 const RISK_FILTERS = [
   { label: "All Risk", value: "all" },
   { label: "Low Risk", value: "low" },
@@ -50,16 +82,27 @@ const RISK_FILTERS = [
   { label: "High Risk", value: "high" },
 ];
 
-// ─── Sort ───────────────────────────────────────────────────────────────────
+// ── Sort ──────────────────────────────────────────────────────────────────────
 type SortOption = "default" | "score" | "value" | "progress" | "return";
-const SORT_CYCLE: SortOption[] = ["default", "score", "value", "progress", "return"];
-const SORT_LABELS: Record<SortOption, string> = { default: "Sort", score: "Score", value: "Value", progress: "Progress", return: "Return" };
+const SORT_CYCLE: SortOption[] = [
+  "default",
+  "score",
+  "value",
+  "progress",
+  "return",
+];
+const SORT_LABELS: Record<SortOption, string> = {
+  default: "Sort",
+  score: "Score",
+  value: "Value",
+  progress: "Progress",
+  return: "Return",
+};
 
-// ─── Component ───────────────────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function MarketplacePage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All Categories");
-  const [minScore, setMinScore] = useState(0);
   const [riskFilter, setRiskFilter] = useState("all");
   const [sortBy, setSortBy] = useState<SortOption>("default");
   const [page, setPage] = useState(1);
@@ -70,21 +113,29 @@ export default function MarketplacePage() {
   const activeData = useMemo<ActiveListing[]>(() => {
     return listings.map((c: MarketplaceListing): ActiveListing => {
       const price = c.pricePerToken ?? 1;
+      const supply = c.totalSupply ?? c.totalValue;
+      const ret = price > 0 ? ((1 / price - 1) * 100) : 0;
       return {
         id: c.tokenId,
         title: c.title,
-        category: c.category.charAt(0).toUpperCase() + c.category.slice(1),
+        category:
+          c.category.charAt(0).toUpperCase() + c.category.slice(1),
         agencyName: c.agency.name ?? "Unknown Agency",
         agencyAddress: c.agency.address,
         agencyVerified: c.agency.verified,
         agencyScore: c.agency.score,
         score: c.avgScore ?? 0,
+        totalValue: c.totalValue,
         value: formatCurrency(c.totalValue),
         tokenPrice: formatCurrency(price, "$"),
         pricePerToken: price,
+        totalSupply: supply,
         completedMilestones: c.completedMilestones,
         totalMilestones: c.totalMilestones,
-        progress: Math.round((c.completedMilestones / Math.max(c.totalMilestones, 1)) * 100),
+        progress: Math.round(
+          (c.completedMilestones / Math.max(c.totalMilestones, 1)) * 100,
+        ),
+        expectedReturn: ret,
       };
     });
   }, [listings]);
@@ -92,32 +143,66 @@ export default function MarketplacePage() {
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     const result = activeData.filter((c) => {
-      if (category !== "All Categories" && c.category !== category) return false;
-      if (c.score < minScore) return false;
-      if (riskFilter !== "all" && getRiskTier(c.agencyScore ?? 0).level !== riskFilter) return false;
-      if (q && !c.title.toLowerCase().includes(q) && !c.agencyName.toLowerCase().includes(q)) return false;
+      if (category !== "All Categories" && c.category !== category)
+        return false;
+      if (
+        riskFilter !== "all" &&
+        getRiskTier(c.agencyScore ?? 0).level !== riskFilter
+      )
+        return false;
+      if (
+        q &&
+        !c.title.toLowerCase().includes(q) &&
+        !c.agencyName.toLowerCase().includes(q)
+      )
+        return false;
       return true;
     });
     if (sortBy === "score") result.sort((a, b) => b.score - a.score);
-    else if (sortBy === "value") result.sort((a, b) => parseFloat(b.value.replace(/[$,]/g, "")) - parseFloat(a.value.replace(/[$,]/g, "")));
-    else if (sortBy === "progress") result.sort((a, b) => b.progress - a.progress);
-    else if (sortBy === "return") result.sort((a, b) => ((1 / a.pricePerToken) - 1) - ((1 / b.pricePerToken) - 1)).reverse();
+    else if (sortBy === "value")
+      result.sort(
+        (a, b) =>
+          parseFloat(b.value.replace(/[$,]/g, "")) -
+          parseFloat(a.value.replace(/[$,]/g, "")),
+      );
+    else if (sortBy === "progress")
+      result.sort((a, b) => b.progress - a.progress);
+    else if (sortBy === "return")
+      result
+        .sort(
+          (a, b) => (1 / a.pricePerToken - 1 - (1 / b.pricePerToken - 1)),
+        )
+        .reverse();
     return result;
-  }, [search, category, minScore, riskFilter, sortBy, activeData]);
+  }, [search, category, riskFilter, sortBy, activeData]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  /** Estimated duration in days based on total milestones */
+  function estimatedDuration(totalMilestones: number): string {
+    const days = totalMilestones * 30;
+    return `${days} days`;
+  }
+
+  /** Remaining tokens for display */
+  function remainingTokens(c: ActiveListing): string {
+    const remaining = Math.round(
+      c.totalSupply * (1 - c.progress / 100),
+    );
+    return remaining.toLocaleString();
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-
       {/* Page header */}
       <div className="mb-10 text-center max-w-2xl mx-auto">
         <h1 className="text-4xl font-bold tracking-tight mb-3">
           Contract <span className="text-accent">Marketplace</span>
         </h1>
-        <p className="text-muted text-base">
-          Invest in tokenized service contracts backed by on-chain escrow.
+        <p className="text-muted text-base leading-relaxed">
+          Browse tokenized service contracts. Fixed returns backed by on-chain
+          escrow.
         </p>
       </div>
 
@@ -128,12 +213,18 @@ export default function MarketplacePage() {
           <SearchField
             aria-label="Search contracts"
             value={search}
-            onChange={(val) => { setSearch(val); setPage(1); }}
+            onChange={(val) => {
+              setSearch(val);
+              setPage(1);
+            }}
             className="w-full"
           >
             <SearchField.Group className="bg-surface-secondary border border-border rounded-lg px-3 py-2 focus-within:border-accent transition-colors">
               <SearchField.SearchIcon className="h-4 w-4 text-muted shrink-0" />
-              <SearchField.Input className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted outline-none" placeholder="Search contracts or agencies…" />
+              <SearchField.Input
+                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted outline-none"
+                placeholder="Search contracts or agencies..."
+              />
               <SearchField.ClearButton className="text-muted hover:text-foreground" />
             </SearchField.Group>
           </SearchField>
@@ -143,7 +234,10 @@ export default function MarketplacePage() {
         <Select
           aria-label="Category"
           selectedKey={category}
-          onSelectionChange={(key) => { setCategory(key as string); setPage(1); }}
+          onSelectionChange={(key) => {
+            setCategory(key as string);
+            setPage(1);
+          }}
         >
           <SelectTrigger className="bg-surface-secondary border border-border text-foreground text-sm rounded-lg px-3 py-2 outline-none hover:border-accent/50 focus:border-accent transition-colors min-w-[160px] flex items-center justify-between gap-2">
             <SelectValue />
@@ -152,26 +246,13 @@ export default function MarketplacePage() {
           <SelectPopover className="bg-surface border border-border rounded-lg shadow-lg">
             <ListBox className="p-1 outline-none">
               {CATEGORIES.map((c) => (
-                <ListBox.Item key={c} id={c} className="px-3 py-2 text-sm rounded cursor-pointer hover:bg-surface-secondary outline-none focus:bg-surface-secondary selected:bg-accent/10 selected:text-accent">{c}</ListBox.Item>
-              ))}
-            </ListBox>
-          </SelectPopover>
-        </Select>
-
-        {/* Score */}
-        <Select
-          aria-label="Minimum score"
-          selectedKey={String(minScore)}
-          onSelectionChange={(key) => { setMinScore(Number(key)); setPage(1); }}
-        >
-          <SelectTrigger className="bg-surface-secondary border border-border text-foreground text-sm rounded-lg px-3 py-2 outline-none hover:border-accent/50 focus:border-accent transition-colors min-w-[140px] flex items-center justify-between gap-2">
-            <SelectValue />
-            <SelectIndicator />
-          </SelectTrigger>
-          <SelectPopover className="bg-surface border border-border rounded-lg shadow-lg">
-            <ListBox className="p-1 outline-none">
-              {SCORE_FILTERS.map((f) => (
-                <ListBox.Item key={String(f.min)} id={String(f.min)} className="px-3 py-2 text-sm rounded cursor-pointer hover:bg-surface-secondary outline-none focus:bg-surface-secondary selected:bg-accent/10 selected:text-accent">{f.label}</ListBox.Item>
+                <ListBox.Item
+                  key={c}
+                  id={c}
+                  className="px-3 py-2 text-sm rounded cursor-pointer hover:bg-surface-secondary outline-none focus:bg-surface-secondary selected:bg-accent/10 selected:text-accent"
+                >
+                  {c}
+                </ListBox.Item>
               ))}
             </ListBox>
           </SelectPopover>
@@ -181,7 +262,10 @@ export default function MarketplacePage() {
         <Select
           aria-label="Risk tier"
           selectedKey={riskFilter}
-          onSelectionChange={(key) => { setRiskFilter(key as string); setPage(1); }}
+          onSelectionChange={(key) => {
+            setRiskFilter(key as string);
+            setPage(1);
+          }}
         >
           <SelectTrigger className="bg-surface-secondary border border-border text-foreground text-sm rounded-lg px-3 py-2 outline-none hover:border-accent/50 focus:border-accent transition-colors min-w-[140px] flex items-center justify-between gap-2">
             <SelectValue />
@@ -190,7 +274,13 @@ export default function MarketplacePage() {
           <SelectPopover className="bg-surface border border-border rounded-lg shadow-lg">
             <ListBox className="p-1 outline-none">
               {RISK_FILTERS.map((f) => (
-                <ListBox.Item key={f.value} id={f.value} className="px-3 py-2 text-sm rounded cursor-pointer hover:bg-surface-secondary outline-none focus:bg-surface-secondary selected:bg-accent/10 selected:text-accent">{f.label}</ListBox.Item>
+                <ListBox.Item
+                  key={f.value}
+                  id={f.value}
+                  className="px-3 py-2 text-sm rounded cursor-pointer hover:bg-surface-secondary outline-none focus:bg-surface-secondary selected:bg-accent/10 selected:text-accent"
+                >
+                  {f.label}
+                </ListBox.Item>
               ))}
             </ListBox>
           </SelectPopover>
@@ -235,59 +325,117 @@ export default function MarketplacePage() {
             />
           ) : (
             <>
-              <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" initial="hidden" animate="show" variants={container}>
+              <motion.div
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+                initial="hidden"
+                animate="show"
+                variants={container}
+              >
                 {paged.map((c) => (
                   <motion.div key={c.id} variants={item}>
-                    <Link href={`/marketplace/${c.id}`} className="block h-full group outline-none">
+                    <Link
+                      href={`/marketplace/${c.id}`}
+                      className="block h-full group outline-none"
+                    >
                       <Card className="h-full flex flex-col bg-surface border border-border rounded-xl shadow-sm hover:border-accent/40 hover:shadow-[0_8px_28px_rgba(var(--accent-rgb,99,102,241),0.12)] hover:-translate-y-0.5 transition-all duration-300">
-                        <CardContent className="flex flex-col flex-1 gap-4 p-5">
-
-                          {/* Top row */}
-                          <div className="flex items-start justify-between gap-2">
-                            <Chip size="sm" variant="soft" className="text-xs font-semibold shrink-0">{c.category}</Chip>
+                        <CardContent className="flex flex-col flex-1 gap-5 p-5">
+                          {/* Top row: category + risk */}
+                          <div className="flex items-center justify-between gap-2">
+                            <Chip
+                              size="sm"
+                              variant="soft"
+                              className="text-xs font-semibold shrink-0"
+                            >
+                              {c.category}
+                            </Chip>
                             <RiskTierBadge score={c.agencyScore} />
                           </div>
 
                           {/* Title + agency */}
                           <div>
-                            <h3 className="font-bold text-base leading-snug line-clamp-2 group-hover:text-accent transition-colors">{c.title}</h3>
-                            <p className="text-xs text-muted mt-1 truncate flex items-center gap-1">
+                            <h3 className="font-bold text-base leading-snug line-clamp-2 group-hover:text-accent transition-colors">
+                              {c.title}
+                            </h3>
+                            <p className="text-xs text-muted mt-1.5 truncate flex items-center gap-1">
                               by{" "}
-                              <Link
-                                href={`/agency/${c.agencyAddress}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="font-semibold text-foreground hover:text-accent transition-colors"
+                              <span
+                                className="font-semibold text-foreground"
                               >
                                 {c.agencyName}
-                              </Link>
-                              {c.agencyVerified && <CheckCircle className="h-3 w-3 text-success shrink-0" />}
+                              </span>
+                              {c.agencyVerified && (
+                                <CheckCircle className="h-3 w-3 text-success shrink-0" />
+                              )}
                             </p>
                           </div>
 
-                          {/* Score + value + return */}
-                          <div className="flex items-center gap-2">
-                            <ScoreBadge score={c.score} />
-                            <span className="text-muted text-xs">·</span>
-                            <span className="text-sm font-bold text-foreground">{c.value}</span>
-                            <ExpectedReturnBadge pricePerToken={c.pricePerToken} />
+                          {/* 3 metric boxes */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="flex flex-col items-center p-3 rounded-lg bg-surface-secondary">
+                              <TrendingUp className="h-3.5 w-3.5 text-success mb-1" />
+                              <span className="text-sm font-bold text-success">
+                                {c.expectedReturn > 0
+                                  ? `+${c.expectedReturn.toFixed(1)}%`
+                                  : "0%"}
+                              </span>
+                              <span className="text-[10px] text-muted mt-0.5">
+                                Return
+                              </span>
+                            </div>
+                            <div className="flex flex-col items-center p-3 rounded-lg bg-surface-secondary">
+                              <Clock className="h-3.5 w-3.5 text-muted mb-1" />
+                              <span className="text-sm font-bold text-foreground">
+                                {estimatedDuration(c.totalMilestones)}
+                              </span>
+                              <span className="text-[10px] text-muted mt-0.5">
+                                Duration
+                              </span>
+                            </div>
+                            <div className="flex flex-col items-center p-3 rounded-lg bg-surface-secondary">
+                              <DollarSign className="h-3.5 w-3.5 text-muted mb-1" />
+                              <span className="text-sm font-bold text-foreground">
+                                {c.value}
+                              </span>
+                              <span className="text-[10px] text-muted mt-0.5">
+                                Value
+                              </span>
+                            </div>
                           </div>
 
-                          {/* Progress */}
-                          <LabeledProgress label="Completion" value={c.progress} color="accent" />
-
-                          {/* Footer */}
-                          <div className="mt-auto flex items-center justify-between pt-3 border-t border-border/60">
-                            <div>
-                              <span className="text-base font-bold text-foreground">{c.tokenPrice}</span>
-                              <span className="text-xs text-muted font-normal ml-0.5">/token</span>
+                          {/* Milestone progress bar */}
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs text-muted">
+                              <span>Milestones</span>
+                              <span className="tabular-nums">
+                                {c.completedMilestones}/{c.totalMilestones}{" "}
+                                complete
+                              </span>
                             </div>
-                            <span className="text-xs text-muted tabular-nums">
-                              {c.totalMilestones - c.completedMilestones > 0
-                                ? `${c.totalMilestones - c.completedMilestones} milestone${c.totalMilestones - c.completedMilestones !== 1 ? "s" : ""} remaining`
-                                : "All milestones complete"}
+                            <div className="h-1.5 w-full rounded-full bg-surface-secondary overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-accent transition-all duration-500"
+                                style={{ width: `${c.progress}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Price + remaining */}
+                          <p className="text-xs text-muted">
+                            <span className="font-medium text-foreground">
+                              {c.tokenPrice}
+                            </span>
+                            /token{" "}
+                            <span className="mx-1 text-border">|</span>{" "}
+                            {remainingTokens(c)} remaining
+                          </p>
+
+                          {/* CTA */}
+                          <div className="mt-auto pt-3 border-t border-border/60">
+                            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent group-hover:gap-2.5 transition-all">
+                              View Deal
+                              <ArrowRight className="h-4 w-4" />
                             </span>
                           </div>
-
                         </CardContent>
                       </Card>
                     </Link>
@@ -299,8 +447,17 @@ export default function MarketplacePage() {
               {filtered.length === 0 && (
                 <div className="text-center py-20 space-y-4">
                   <SlidersHorizontal className="h-10 w-10 text-muted mx-auto" />
-                  <p className="text-muted font-medium">No contracts match your filters.</p>
-                  <Button variant="ghost" onPress={() => { setSearch(""); setCategory("All Categories"); setMinScore(0); setRiskFilter("all"); }}>
+                  <p className="text-muted font-medium">
+                    No contracts match your filters.
+                  </p>
+                  <Button
+                    variant="ghost"
+                    onPress={() => {
+                      setSearch("");
+                      setCategory("All Categories");
+                      setRiskFilter("all");
+                    }}
+                  >
                     Clear filters
                   </Button>
                 </div>
@@ -309,9 +466,23 @@ export default function MarketplacePage() {
               {/* Pagination */}
               {filtered.length > PAGE_SIZE && (
                 <div className="flex items-center justify-between mt-10 bg-surface border border-border rounded-xl px-4 py-3">
-                  <Button variant="ghost" isDisabled={page <= 1} onPress={() => setPage(p => p - 1)}>← Previous</Button>
-                  <span className="text-sm text-muted tabular-nums">Page {page} of {totalPages}</span>
-                  <Button variant="ghost" isDisabled={page >= totalPages} onPress={() => setPage(p => p + 1)}>Next →</Button>
+                  <Button
+                    variant="ghost"
+                    isDisabled={page <= 1}
+                    onPress={() => setPage((p) => p - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted tabular-nums">
+                    Page {page} of {totalPages}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    isDisabled={page >= totalPages}
+                    onPress={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
                 </div>
               )}
             </>

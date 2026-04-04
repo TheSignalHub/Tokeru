@@ -16,6 +16,8 @@ import {
   FileText,
   Building2,
   ShieldCheck,
+  ArrowRight,
+  Layers,
 } from "lucide-react";
 import { useTokenDetail } from "@/hooks/use-marketplace";
 import { useApi, postApi } from "@/hooks/use-api";
@@ -62,10 +64,19 @@ interface HoldingItem {
 type TabKey = "overview" | "milestones" | "agency" | "security";
 
 const TAB_LABELS: Record<TabKey, { label: string; icon: React.ReactNode }> = {
-  overview: { label: "Overview", icon: <TrendingUp className="h-4 w-4" /> },
-  milestones: { label: "Milestones", icon: <FileText className="h-4 w-4" /> },
+  overview: {
+    label: "Overview",
+    icon: <TrendingUp className="h-4 w-4" />,
+  },
+  milestones: {
+    label: "Milestones",
+    icon: <FileText className="h-4 w-4" />,
+  },
   agency: { label: "Agency", icon: <Building2 className="h-4 w-4" /> },
-  security: { label: "Security", icon: <ShieldCheck className="h-4 w-4" /> },
+  security: {
+    label: "Security",
+    icon: <ShieldCheck className="h-4 w-4" />,
+  },
 };
 
 export default function TokenDetailPage() {
@@ -83,15 +94,19 @@ export default function TokenDetailPage() {
   const [selling, setSelling] = useState(false);
 
   // Fetch user holdings to show sell section
-  const { data: userHoldings, refresh: refreshHoldings } = useApi<HoldingItem[]>(
-    walletAddress ? `/api/users/${walletAddress}/holdings` : null,
-  );
+  const { data: userHoldings, refresh: refreshHoldings } = useApi<
+    HoldingItem[]
+  >(walletAddress ? `/api/users/${walletAddress}/holdings` : null);
   const myHolding = userHoldings?.find((h) => h.contractId === tokenId);
 
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <PageHeader title="" backHref="/marketplace" backLabel="Back to Marketplace" />
+        <PageHeader
+          title=""
+          backHref="/marketplace"
+          backLabel="Back to Marketplace"
+        />
         <div className="flex justify-center py-24">
           <Spinner size="lg" className="text-accent" />
         </div>
@@ -102,7 +117,11 @@ export default function TokenDetailPage() {
   if (!apiToken) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <PageHeader title="" backHref="/marketplace" backLabel="Back to Marketplace" />
+        <PageHeader
+          title=""
+          backHref="/marketplace"
+          backLabel="Back to Marketplace"
+        />
         <EmptyState
           icon={<AlertCircle className="h-12 w-12" />}
           title="Token not found"
@@ -123,22 +142,30 @@ export default function TokenDetailPage() {
   const pricePerToken = apiToken.pricePerToken;
   const totalSupply = apiToken.totalSupply;
   const deployedOnChain = apiToken.deployedOnChain;
-  // Face value is always $1.00 per token
   const faceValuePerToken = 1.0;
   const parsedAmount = parseFloat(buyAmount) || 0;
   const totalCost = parsedAmount * pricePerToken;
   const faceValue = parsedAmount * faceValuePerToken;
-  // Returns = (faceValue / cost - 1) * 100 = (1/pricePerToken - 1) * 100
   const yieldAmount = faceValue - totalCost;
   const yieldPercent =
     totalCost > 0 ? ((yieldAmount / totalCost) * 100).toFixed(1) : "0.0";
+  const expectedReturnPct =
+    pricePerToken > 0
+      ? ((1 / pricePerToken - 1) * 100).toFixed(1)
+      : "0.0";
   const marketCap = pricePerToken * totalSupply;
+  const remainingTokens = Math.round(
+    totalSupply * (1 - apiToken.progress / 100),
+  );
 
   // Milestone payout calculations
-  const totalPayouts = apiToken.milestones?.reduce((sum, m) => sum + m.amount, 0) ?? apiToken.totalValue;
-  const completedPayouts = apiToken.milestones
-    ?.filter((m) => m.status === "approved")
-    .reduce((sum, m) => sum + m.amount, 0) ?? 0;
+  const totalPayouts =
+    apiToken.milestones?.reduce((sum, m) => sum + m.amount, 0) ??
+    apiToken.totalValue;
+  const completedPayouts =
+    apiToken.milestones
+      ?.filter((m) => m.status === "approved")
+      .reduce((sum, m) => sum + m.amount, 0) ?? 0;
   const remainingPayouts = totalPayouts - completedPayouts;
 
   async function handleBuy() {
@@ -203,7 +230,9 @@ export default function TokenDetailPage() {
   }
 
   const agencyId = apiToken.agency.address;
-  const agencyInitial = (apiToken.agency.name ?? "?").charAt(0).toUpperCase();
+  const agencyInitial = (apiToken.agency.name ?? "?")
+    .charAt(0)
+    .toUpperCase();
   const categoryLabel =
     apiToken.category.charAt(0).toUpperCase() + apiToken.category.slice(1);
 
@@ -220,44 +249,45 @@ export default function TokenDetailPage() {
       <div className="grid lg:grid-cols-[1fr_380px] gap-8 items-start">
         {/* -- Left Column -- */}
         <div className="space-y-6 min-w-0">
-
-          {/* Token Header — always visible above tabs */}
+          {/* Deal Header */}
           <SectionCard>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs px-2 py-1 rounded bg-surface-secondary text-muted">
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <span className="text-xs px-2.5 py-1 rounded-md bg-surface-secondary text-muted font-medium">
                 {categoryLabel}
               </span>
+              <RiskTierBadge score={apiToken.agency.score} />
               <StatusBadge status="approved" />
               {apiToken.agency.verified && (
-                <span className="text-xs px-2 py-1 rounded bg-brand/10 text-brand font-medium">
+                <span className="text-xs px-2.5 py-1 rounded-md bg-brand/10 text-brand font-medium">
                   Verified Agency
                 </span>
               )}
             </div>
             <h1 className="text-2xl font-bold mb-1">{apiToken.title}</h1>
-            <p className="text-sm text-muted mb-3">
-              {apiToken.tokenName} ({apiToken.tokenSymbol})
-            </p>
-            <div className="flex flex-wrap items-center gap-4 text-sm text-muted">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-muted mt-2">
               <Link
                 href={`/agency/${agencyId}`}
-                className="flex items-center gap-2 hover:text-accent"
+                className="flex items-center gap-2 hover:text-accent transition-colors"
               >
                 <div className="h-6 w-6 rounded-full bg-brand/20 flex items-center justify-center text-xs font-bold text-brand">
                   {agencyInitial}
                 </div>
                 {apiToken.agency.name ?? "Unknown Agency"}
+                {apiToken.agency.verified && (
+                  <CheckCircle className="h-3 w-3 text-success" />
+                )}
               </Link>
+              <span className="text-border">|</span>
               <span>
-                Contract Value:{" "}
-                <span className="font-medium text-foreground">
+                Deal Size:{" "}
+                <span className="font-semibold text-foreground">
                   ${apiToken.totalValue.toLocaleString()}
                 </span>
               </span>
             </div>
             <div className="mt-4">
               <LabeledProgress
-                label={`Overall Completion — ${apiToken.completedMilestones}/${apiToken.totalMilestones} milestones`}
+                label={`${apiToken.completedMilestones}/${apiToken.totalMilestones} milestones complete`}
                 value={apiToken.progress}
                 color="accent"
               />
@@ -282,61 +312,207 @@ export default function TokenDetailPage() {
             ))}
           </div>
 
-          {/* Tab Content */}
+          {/* ── Overview Tab ── */}
           {activeTab === "overview" && (
             <div className="space-y-6 min-h-[400px]">
-              {/* Token Economics */}
-              <SectionCard title="Token Economics" icon={<TrendingUp className="h-5 w-5 text-accent" />}>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-lg bg-surface-secondary text-center">
-                    <div className="text-xl font-bold text-accent">
-                      ${pricePerToken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {/* Deal Terms */}
+              <SectionCard
+                title="Deal Terms"
+                icon={<Layers className="h-5 w-5 text-accent" />}
+              >
+                <div className="divide-y divide-border/50">
+                  {[
+                    {
+                      label: "Face Value",
+                      value: "$1.00 per token",
+                    },
+                    {
+                      label: "Purchase Price",
+                      value: `$${pricePerToken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per token`,
+                    },
+                    {
+                      label: "Expected Return",
+                      value: `+${expectedReturnPct}%`,
+                      highlight: true,
+                    },
+                    {
+                      label: "Deal Size",
+                      value: `$${apiToken.totalValue.toLocaleString()}`,
+                    },
+                    {
+                      label: "Token Supply",
+                      value: `${totalSupply.toLocaleString()} tokens`,
+                    },
+                    {
+                      label: "Remaining",
+                      value: `${remainingTokens.toLocaleString()} tokens`,
+                    },
+                    {
+                      label: "Structure",
+                      value: "Milestone-based",
+                    },
+                    {
+                      label: "Escrow",
+                      value: "Smart contract (Base)",
+                    },
+                  ].map((row) => (
+                    <div
+                      key={row.label}
+                      className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
+                    >
+                      <span className="text-sm text-muted">{row.label}</span>
+                      <span
+                        className={`text-sm font-semibold ${row.highlight ? "text-success" : "text-foreground"}`}
+                      >
+                        {row.value}
+                      </span>
                     </div>
-                    <div className="text-xs text-muted mt-1">Price per Token</div>
-                  </div>
-                  <div className="p-4 rounded-lg bg-surface-secondary text-center">
-                    <div className="text-xl font-bold">
-                      {totalSupply.toLocaleString()}
-                    </div>
-                    <div className="text-xs text-muted mt-1">Total Supply</div>
-                  </div>
-                  <div className="p-4 rounded-lg bg-surface-secondary text-center col-span-2 sm:col-span-1">
-                    <div className="text-xl font-bold">
-                      ${marketCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                    </div>
-                    <div className="text-xs text-muted mt-1">Market Cap</div>
-                  </div>
+                  ))}
                 </div>
               </SectionCard>
 
-              {/* Info box */}
-              <div className="p-4 rounded-lg bg-accent/5 border border-accent/20 text-sm text-muted leading-relaxed">
-                Each token represents a $1.00 claim on this contract&apos;s future milestone payouts.
-                Buy at a discount, earn returns when milestones are completed and verified.
-              </div>
+              {/* Payout Schedule */}
+              {apiToken.exposure.showMilestones &&
+              apiToken.milestones &&
+              apiToken.milestones.length > 0 ? (
+                <SectionCard
+                  title="Payout Schedule"
+                  icon={<FileText className="h-5 w-5 text-accent" />}
+                >
+                  <div className="space-y-2">
+                    {apiToken.milestones.map((m, i) => {
+                      const isComplete = m.status === "approved";
+                      const isDelivered = m.status === "delivered";
+                      return (
+                        <div
+                          key={`payout-${m.id}`}
+                          className="flex items-center gap-3 p-3 rounded-lg bg-surface-secondary"
+                        >
+                          <div
+                            className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                              isComplete
+                                ? "bg-success/15 text-success"
+                                : isDelivered
+                                  ? "bg-warning/15 text-warning"
+                                  : "bg-surface text-muted border border-border"
+                            }`}
+                          >
+                            {isComplete ? (
+                              <CheckCircle className="h-3.5 w-3.5" />
+                            ) : (
+                              <span>M{i + 1}</span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium truncate block">
+                              {m.name}
+                            </span>
+                          </div>
+                          <span className="text-sm font-semibold text-foreground tabular-nums shrink-0">
+                            ${m.amount.toLocaleString()}
+                          </span>
+                          <div className="w-16 shrink-0">
+                            <div className="h-1.5 w-full rounded-full bg-border/50 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${isComplete ? "bg-success" : "bg-border"}`}
+                                style={{
+                                  width: isComplete ? "100%" : "0%",
+                                }}
+                              />
+                            </div>
+                            <span
+                              className={`text-[10px] mt-0.5 block text-right ${isComplete ? "text-success" : isDelivered ? "text-warning" : "text-muted"}`}
+                            >
+                              {isComplete
+                                ? "Done"
+                                : isDelivered
+                                  ? "Review"
+                                  : "Pending"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </SectionCard>
+              ) : !apiToken.exposure.showMilestones ? (
+                <SectionCard
+                  title="Payout Schedule"
+                  icon={<FileText className="h-5 w-5 text-accent" />}
+                >
+                  <div className="flex items-center gap-3 text-sm text-muted py-2">
+                    <Lock className="h-4 w-4 flex-shrink-0" />
+                    <span>
+                      Milestone details are private.{" "}
+                      {apiToken.completedMilestones} of{" "}
+                      {apiToken.totalMilestones} milestones completed.
+                    </span>
+                  </div>
+                </SectionCard>
+              ) : null}
+
+              {/* How It Works */}
+              <SectionCard
+                title="How It Works"
+                icon={<ArrowRight className="h-5 w-5 text-accent" />}
+              >
+                <ol className="space-y-3">
+                  {[
+                    `Buy tokens at $${pricePerToken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${((1 - pricePerToken) * 100).toFixed(0)}% discount)`,
+                    "Agency delivers milestones on the contract",
+                    "Client approves deliverables -- escrow releases funds",
+                    "Redeem or sell tokens at $1.00 face value",
+                  ].map((step, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <span className="flex items-center justify-center h-6 w-6 rounded-full bg-accent/10 text-accent text-xs font-bold shrink-0 mt-0.5">
+                        {i + 1}
+                      </span>
+                      <span className="text-sm text-muted leading-relaxed">
+                        {step}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+                <div className="mt-4 p-3 rounded-lg bg-success/5 border border-success/20">
+                  <p className="text-sm font-semibold text-success">
+                    Net return: $
+                    {(faceValuePerToken - pricePerToken).toFixed(2)} per
+                    token (+{expectedReturnPct}%)
+                  </p>
+                </div>
+              </SectionCard>
             </div>
           )}
 
+          {/* ── Milestones Tab ── */}
           {activeTab === "milestones" && (
             <div className="space-y-6 min-h-[400px]">
               {/* Milestone summary row */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="p-3 rounded-lg bg-surface-secondary text-center">
-                  <div className="text-lg font-bold">${totalPayouts.toLocaleString()}</div>
+                  <div className="text-lg font-bold">
+                    ${totalPayouts.toLocaleString()}
+                  </div>
                   <div className="text-xs text-muted">Total Payouts</div>
                 </div>
                 <div className="p-3 rounded-lg bg-surface-secondary text-center">
-                  <div className="text-lg font-bold text-success">${completedPayouts.toLocaleString()}</div>
+                  <div className="text-lg font-bold text-success">
+                    ${completedPayouts.toLocaleString()}
+                  </div>
                   <div className="text-xs text-muted">Completed</div>
                 </div>
                 <div className="p-3 rounded-lg bg-surface-secondary text-center">
-                  <div className="text-lg font-bold text-warning">${remainingPayouts.toLocaleString()}</div>
+                  <div className="text-lg font-bold text-warning">
+                    ${remainingPayouts.toLocaleString()}
+                  </div>
                   <div className="text-xs text-muted">Remaining</div>
                 </div>
               </div>
 
               {/* Milestones list */}
-              {apiToken.exposure.showMilestones && apiToken.milestones && apiToken.milestones.length > 0 ? (
+              {apiToken.exposure.showMilestones &&
+              apiToken.milestones &&
+              apiToken.milestones.length > 0 ? (
                 <SectionCard title="Milestones">
                   <div className="space-y-3">
                     {apiToken.milestones.map((m, i) => (
@@ -359,11 +535,15 @@ export default function TokenDetailPage() {
                             ) : m.status === "delivered" ? (
                               <Clock className="h-4 w-4 text-warning" />
                             ) : (
-                              <span className="text-xs text-muted">{i + 1}</span>
+                              <span className="text-xs text-muted">
+                                {i + 1}
+                              </span>
                             )}
                           </div>
                           <div>
-                            <div className="text-sm font-medium">{m.name}</div>
+                            <div className="text-sm font-medium">
+                              {m.name}
+                            </div>
                             <div className="text-xs text-muted">
                               ${m.amount.toLocaleString()}
                             </div>
@@ -372,7 +552,10 @@ export default function TokenDetailPage() {
                         <div className="flex items-center gap-3">
                           <StatusBadge
                             status={
-                              m.status as "approved" | "delivered" | "pending"
+                              m.status as
+                                | "approved"
+                                | "delivered"
+                                | "pending"
                             }
                           />
                         </div>
@@ -385,7 +568,9 @@ export default function TokenDetailPage() {
                   <div className="flex items-center gap-3 text-sm text-muted py-2">
                     <Lock className="h-4 w-4 flex-shrink-0" />
                     <span>
-                      Milestone details are private. {apiToken.completedMilestones} of {apiToken.totalMilestones} milestones completed.
+                      Milestone details are private.{" "}
+                      {apiToken.completedMilestones} of{" "}
+                      {apiToken.totalMilestones} milestones completed.
                     </span>
                   </div>
                 </SectionCard>
@@ -393,9 +578,13 @@ export default function TokenDetailPage() {
             </div>
           )}
 
+          {/* ── Agency Tab ── */}
           {activeTab === "agency" && (
             <div className="space-y-6 min-h-[400px]">
-              <SectionCard title="Agency Profile" icon={<Building2 className="h-5 w-5 text-brand" />}>
+              <SectionCard
+                title="Agency Profile"
+                icon={<Building2 className="h-5 w-5 text-brand" />}
+              >
                 <div className="flex items-center gap-4 mb-4">
                   <div className="h-14 w-14 rounded-full bg-brand/20 flex items-center justify-center text-lg font-bold text-brand">
                     {agencyInitial}
@@ -413,7 +602,8 @@ export default function TokenDetailPage() {
                       )}
                     </div>
                     <div className="text-sm text-muted mt-0.5">
-                      {apiToken.agency.address.slice(0, 6)}...{apiToken.agency.address.slice(-4)}
+                      {apiToken.agency.address.slice(0, 6)}...
+                      {apiToken.agency.address.slice(-4)}
                     </div>
                   </div>
                 </div>
@@ -425,7 +615,9 @@ export default function TokenDetailPage() {
                       <div className="text-2xl font-bold text-success">
                         {apiToken.agency.score}
                       </div>
-                      <div className="text-xs text-muted">Reputation Score</div>
+                      <div className="text-xs text-muted">
+                        Reputation Score
+                      </div>
                     </div>
                     <RiskTierBadge score={apiToken.agency.score} />
                   </div>
@@ -435,7 +627,9 @@ export default function TokenDetailPage() {
                 <div className="p-3 rounded-lg bg-surface-secondary text-sm text-muted leading-relaxed">
                   <div className="flex items-center gap-2 mb-1">
                     <Shield className="h-4 w-4 text-brand" />
-                    <span className="font-medium text-foreground">Track Record</span>
+                    <span className="font-medium text-foreground">
+                      Track Record
+                    </span>
                   </div>
                   {apiToken.completedMilestones > 0
                     ? `${apiToken.completedMilestones} milestones completed across this contract.`
@@ -455,13 +649,19 @@ export default function TokenDetailPage() {
             </div>
           )}
 
+          {/* ── Security Tab ── */}
           {activeTab === "security" && (
             <div className="space-y-6 min-h-[400px]">
               {/* Escrow mechanism */}
-              <SectionCard title="Escrow Mechanism" icon={<ShieldCheck className="h-5 w-5 text-success" />}>
+              <SectionCard
+                title="Escrow Mechanism"
+                icon={<ShieldCheck className="h-5 w-5 text-success" />}
+              >
                 <div className="p-4 rounded-lg bg-success/5 border border-success/20 text-sm text-muted leading-relaxed">
-                  Funds are held in an audited smart contract. Released only upon verified milestone completion.
-                  Each milestone payout is triggered on-chain, ensuring transparent and trustless fund distribution.
+                  Funds are held in an audited smart contract. Released only
+                  upon verified milestone completion. Each milestone payout is
+                  triggered on-chain, ensuring transparent and trustless fund
+                  distribution.
                 </div>
               </SectionCard>
 
@@ -477,7 +677,8 @@ export default function TokenDetailPage() {
                         rel="noopener noreferrer"
                         className="text-accent font-mono text-xs flex items-center gap-1 hover:underline"
                       >
-                        {apiToken.tokenAddress.slice(0, 6)}...{apiToken.tokenAddress.slice(-4)}
+                        {apiToken.tokenAddress.slice(0, 6)}...
+                        {apiToken.tokenAddress.slice(-4)}
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     ) : (
@@ -521,65 +722,76 @@ export default function TokenDetailPage() {
 
               {/* Dispute History */}
               {apiToken.exposure.showDisputeHistory &&
-                apiToken.disputes &&
-                apiToken.disputes.length > 0 ? (
-                  <SectionCard title="Dispute History">
-                    <div className="space-y-3">
-                      {apiToken.disputes.map((d) => (
-                        <div
-                          key={d.id}
-                          className="flex items-center justify-between p-4 rounded-lg bg-surface-secondary border border-border/50"
-                        >
-                          <div>
-                            <div className="text-sm font-medium capitalize">
-                              {d.phase.replace(/_/g, " ")}
-                            </div>
-                            <div className="text-xs text-muted">
-                              Opened{" "}
-                              {new Date(d.createdAt).toISOString().slice(0, 10)}
-                              {d.resolvedAt && (
-                                <> · Resolved {new Date(d.resolvedAt).toISOString().slice(0, 10)}</>
-                              )}
-                            </div>
+              apiToken.disputes &&
+              apiToken.disputes.length > 0 ? (
+                <SectionCard title="Dispute History">
+                  <div className="space-y-3">
+                    {apiToken.disputes.map((d) => (
+                      <div
+                        key={d.id}
+                        className="flex items-center justify-between p-4 rounded-lg bg-surface-secondary border border-border/50"
+                      >
+                        <div>
+                          <div className="text-sm font-medium capitalize">
+                            {d.phase.replace(/_/g, " ")}
                           </div>
-                          <StatusBadge
-                            status={
-                              d.status === "resolved"
-                                ? "approved"
-                                : d.status === "pending"
-                                  ? "pending"
-                                  : "delivered"
-                            }
-                          />
+                          <div className="text-xs text-muted">
+                            Opened{" "}
+                            {new Date(d.createdAt)
+                              .toISOString()
+                              .slice(0, 10)}
+                            {d.resolvedAt && (
+                              <>
+                                {" "}
+                                -- Resolved{" "}
+                                {new Date(d.resolvedAt)
+                                  .toISOString()
+                                  .slice(0, 10)}
+                              </>
+                            )}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </SectionCard>
-                ) : apiToken.exposure.showDisputeHistory ? (
-                  <SectionCard title="Dispute History">
-                    <div className="flex items-center gap-3 text-sm text-muted py-2">
-                      <CheckCircle className="h-4 w-4 text-success flex-shrink-0" />
-                      <span>No disputes have been filed for this contract.</span>
-                    </div>
-                  </SectionCard>
-                ) : (
-                  <SectionCard title="Dispute History">
-                    <div className="flex items-center gap-3 text-sm text-muted py-2">
-                      <Lock className="h-4 w-4 flex-shrink-0" />
-                      <span>Dispute history is not disclosed for this token.</span>
-                    </div>
-                  </SectionCard>
-                )}
+                        <StatusBadge
+                          status={
+                            d.status === "resolved"
+                              ? "approved"
+                              : d.status === "pending"
+                                ? "pending"
+                                : "delivered"
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </SectionCard>
+              ) : apiToken.exposure.showDisputeHistory ? (
+                <SectionCard title="Dispute History">
+                  <div className="flex items-center gap-3 text-sm text-muted py-2">
+                    <CheckCircle className="h-4 w-4 text-success flex-shrink-0" />
+                    <span>
+                      No disputes have been filed for this contract.
+                    </span>
+                  </div>
+                </SectionCard>
+              ) : (
+                <SectionCard title="Dispute History">
+                  <div className="flex items-center gap-3 text-sm text-muted py-2">
+                    <Lock className="h-4 w-4 flex-shrink-0" />
+                    <span>
+                      Dispute history is not disclosed for this token.
+                    </span>
+                  </div>
+                </SectionCard>
+              )}
             </div>
           )}
         </div>
 
         {/* -- Right Column -- */}
         <div className="space-y-6 self-start sticky top-24 z-10 max-h-[calc(100vh-8rem)] overflow-y-auto">
-
           {/* Buy Card */}
           <SectionCard
-            title="Invest in This Token"
+            title="Invest in this Deal"
             className="border-accent/30"
           >
             {!deployedOnChain ? (
@@ -590,9 +802,12 @@ export default function TokenDetailPage() {
                     <AlertCircle className="h-6 w-6 text-warning" />
                   </div>
                   <div className="text-center">
-                    <p className="font-semibold text-warning">Contract Not Available</p>
+                    <p className="font-semibold text-warning">
+                      Contract Not Available
+                    </p>
                     <p className="text-sm text-muted mt-1">
-                      This contract&apos;s on-chain deployment is no longer available. The agency needs to re-tokenize it.
+                      This contract&apos;s on-chain deployment is no longer
+                      available. The agency needs to re-tokenize it.
                     </p>
                   </div>
                 </div>
@@ -611,14 +826,22 @@ export default function TokenDetailPage() {
                     <CheckCircle className="h-6 w-6 text-success" />
                   </div>
                   <div className="text-center">
-                    <p className="font-semibold text-success">Purchase Successful!</p>
+                    <p className="font-semibold text-success">
+                      Investment Successful
+                    </p>
                     <p className="text-sm text-muted mt-1">
-                      You bought {buyResult.amount.toLocaleString()} {apiToken.tokenSymbol} for{" "}
-                      ${buyResult.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETH
+                      You invested in{" "}
+                      {buyResult.amount.toLocaleString()}{" "}
+                      {apiToken.tokenSymbol} for $
+                      {buyResult.totalCost.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </p>
                     {buyResult.txHash && (
                       <p className="text-xs text-muted font-mono mt-1 break-all">
-                        Tx: {buyResult.txHash.slice(0, 10)}...{buyResult.txHash.slice(-8)}
+                        Tx: {buyResult.txHash.slice(0, 10)}...
+                        {buyResult.txHash.slice(-8)}
                       </p>
                     )}
                   </div>
@@ -634,73 +857,110 @@ export default function TokenDetailPage() {
                   onClick={() => setBuyResult(null)}
                   className="w-full text-xs text-muted hover:text-foreground text-center py-1 transition-colors"
                 >
-                  Buy more tokens
+                  Invest again
                 </button>
               </div>
             ) : (
               /* Buy form */
               <div className="space-y-4">
-                {/* How it works */}
-                <div className="p-3 rounded-lg bg-accent/5 border border-accent/20 text-xs text-muted leading-relaxed">
-                  When you buy tokens, they are minted directly to your wallet. Each token represents a $1.00 claim on the contract&apos;s future payouts. You buy at a discount and earn returns when milestones are completed.
+                {/* Key deal metrics */}
+                <div className="divide-y divide-border/50 text-sm">
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-muted">Price per token</span>
+                    <span className="font-bold text-accent">
+                      $
+                      {pricePerToken.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-muted">Face value</span>
+                    <span className="font-medium">$1.00</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-muted">Expected return</span>
+                    <span className="font-semibold text-success">
+                      +{expectedReturnPct}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-muted">Remaining</span>
+                    <span className="font-medium">
+                      {remainingTokens.toLocaleString()} tokens
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted">Price per token</span>
-                  <span className="font-bold text-lg text-accent">
-                    ${pricePerToken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETH
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted">Total supply</span>
-                  <span>{totalSupply.toLocaleString()} {apiToken.tokenSymbol}</span>
-                </div>
-
-                <div className="h-px bg-border/50" />
-
+                {/* Input */}
                 <div>
                   <label className="text-xs text-muted mb-1 block">
-                    Number of tokens to buy
+                    Number of tokens
                   </label>
-                  <Input
-                    type="number"
-                    min="1"
-                    step="1"
-                    placeholder="e.g. 10"
-                    value={buyAmount}
-                    onChange={(e) => {
-                      setBuyAmount(e.target.value);
-                      setBuyError(null);
-                    }}
-                    variant="secondary"
-                    className="w-full"
-                  />
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min="1"
+                      step="1"
+                      placeholder="e.g. 100"
+                      value={buyAmount}
+                      onChange={(e) => {
+                        setBuyAmount(e.target.value);
+                        setBuyError(null);
+                      }}
+                      variant="secondary"
+                      className="w-full"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted pointer-events-none">
+                      tokens
+                    </span>
+                  </div>
                 </div>
 
-                {/* Cost breakdown */}
-                <div className="space-y-2 p-3 rounded-lg bg-surface-secondary text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted">Cost (ETH)</span>
-                    <span className="font-medium">
-                      ${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
+                {/* Cost breakdown table */}
+                {parsedAmount > 0 && (
+                  <div className="divide-y divide-border/50 p-3 rounded-lg bg-surface-secondary text-sm">
+                    <div className="flex justify-between pb-2">
+                      <span className="text-muted">
+                        {parsedAmount.toLocaleString()} x $
+                        {pricePerToken.toFixed(2)}
+                      </span>
+                      <span className="font-medium">
+                        $
+                        {totalCost.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-2">
+                      <span className="text-muted">Face value at maturity</span>
+                      <span className="font-medium">
+                        $
+                        {faceValue.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between pt-2 font-semibold">
+                      <span className="text-muted">Estimated return</span>
+                      <span
+                        className={
+                          yieldAmount >= 0 ? "text-success" : "text-danger"
+                        }
+                      >
+                        {yieldAmount >= 0 ? "+" : ""}$
+                        {yieldAmount.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        ({yieldPercent}%)
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted">Face value</span>
-                    <span className="font-medium">
-                      ${faceValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <div className="h-px bg-border/50" />
-                  <div className="flex justify-between font-semibold">
-                    <span className="text-muted">Expected returns</span>
-                    <span className={yieldAmount >= 0 ? "text-success" : "text-danger"}>
-                      {yieldAmount >= 0 ? "+" : ""}
-                      ${yieldAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
-                      ({yieldPercent}%)
-                    </span>
-                  </div>
-                </div>
+                )}
 
                 {buyError && (
                   <div className="flex items-center gap-2 text-xs text-danger bg-danger/10 rounded-lg p-3">
@@ -717,46 +977,52 @@ export default function TokenDetailPage() {
                   >
                     {buying ? (
                       <span className="flex items-center gap-2">
-                        <Spinner size="sm" className="text-accent-foreground" />
+                        <Spinner
+                          size="sm"
+                          className="text-accent-foreground"
+                        />
                         Processing...
                       </span>
-                    ) : `Buy ${buyAmount || "0"} ${apiToken.tokenSymbol}`}
+                    ) : (
+                      `Invest ${buyAmount ? parsedAmount.toLocaleString() : "0"} tokens`
+                    )}
                   </Button>
                 ) : (
                   <Button
                     onPress={() => login()}
                     className="w-full bg-accent text-accent-foreground"
                   >
-                    Connect Wallet to Buy
+                    Connect Wallet to Invest
                   </Button>
                 )}
 
                 <p className="text-xs text-muted/70 text-center leading-relaxed">
-                  Tokens represent claims on future contract payouts. Returns depend on successful milestone completion.
-                </p>
-                <p className="text-xs text-muted text-center">
-                  Tokens are minted on Base Sepolia
+                  Your capital is protected by smart contract escrow.
                 </p>
               </div>
             )}
           </SectionCard>
 
-          {/* Sell Card — only visible if user holds tokens */}
+          {/* Sell Card -- only visible if user holds tokens */}
           {authenticated && myHolding && myHolding.amount > 0 && (
             <SectionCard title="Sell Tokens" className="border-warning/30">
               <div className="space-y-4">
-                <div className="p-3 rounded-lg bg-surface-secondary space-y-2 text-sm">
-                  <div className="flex justify-between">
+                <div className="divide-y divide-border/50 text-sm">
+                  <div className="flex justify-between items-center py-2">
                     <span className="text-muted">Your holdings</span>
-                    <span className="font-medium">{myHolding.amount} {apiToken.tokenSymbol}</span>
+                    <span className="font-medium">
+                      {myHolding.amount} {apiToken.tokenSymbol}
+                    </span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center py-2">
                     <span className="text-muted">Buy price</span>
                     <span>${myHolding.buyPrice.toFixed(2)}/token</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center py-2">
                     <span className="text-muted">Current sell price</span>
-                    <span className="font-medium text-accent">${myHolding.currentPrice.toFixed(2)}/token</span>
+                    <span className="font-medium text-accent">
+                      ${myHolding.currentPrice.toFixed(2)}/token
+                    </span>
                   </div>
                 </div>
 
@@ -785,14 +1051,23 @@ export default function TokenDetailPage() {
                     </div>
                     <div className="flex justify-between font-semibold">
                       <span className="text-muted">Estimated value</span>
-                      <span>${(parseFloat(sellAmount) * myHolding.currentPrice).toFixed(2)}</span>
+                      <span>
+                        $
+                        {(
+                          parseFloat(sellAmount) * myHolding.currentPrice
+                        ).toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 )}
 
                 <Button
                   onPress={handleSell}
-                  isDisabled={selling || !sellAmount || parseFloat(sellAmount) <= 0}
+                  isDisabled={
+                    selling ||
+                    !sellAmount ||
+                    parseFloat(sellAmount) <= 0
+                  }
                   className="w-full bg-warning text-warning-foreground"
                 >
                   {selling ? (
@@ -800,11 +1075,14 @@ export default function TokenDetailPage() {
                       <Spinner size="sm" />
                       Processing...
                     </span>
-                  ) : `Sell ${sellAmount || "0"} ${apiToken.tokenSymbol}`}
+                  ) : (
+                    `Sell ${sellAmount || "0"} ${apiToken.tokenSymbol}`
+                  )}
                 </Button>
 
                 <p className="text-xs text-muted/70 text-center leading-relaxed">
-                  Completed contracts sell at face value ($1.00/token). In-progress contracts sell at your buy price.
+                  Completed contracts sell at face value ($1.00/token).
+                  In-progress contracts sell at your buy price.
                 </p>
               </div>
             </SectionCard>
@@ -836,7 +1114,9 @@ export default function TokenDetailPage() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted">Token</span>
-                <span className="font-mono font-medium">{apiToken.tokenSymbol}</span>
+                <span className="font-mono font-medium">
+                  {apiToken.tokenSymbol}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted">Total Supply</span>
@@ -844,7 +1124,12 @@ export default function TokenDetailPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted">Market Cap</span>
-                <span>${marketCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                <span>
+                  $
+                  {marketCap.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                  })}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted">Holders</span>
