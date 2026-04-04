@@ -174,6 +174,47 @@ export async function checkDisputeDeadline(contractId: string, disputeId: string
   );
 }
 
+export async function respondToDispute(contractId: string, disputeId: string, message: string) {
+  return postApi<Dispute>(`/api/contracts/${contractId}/dispute`, {
+    action: "respond", disputeId, message,
+  });
+}
+
+export async function escalateDispute(contractId: string, disputeId: string) {
+  return postApi<Dispute>(`/api/contracts/${contractId}/dispute`, {
+    action: "escalate", disputeId,
+  });
+}
+
+export async function acceptRejection(contractId: string, disputeId: string) {
+  return postApi<Dispute>(`/api/contracts/${contractId}/dispute`, {
+    action: "accept_rejection", disputeId,
+  });
+}
+
+export async function approveMilestoneInDispute(contractId: string, disputeId: string) {
+  return postApi<Dispute>(`/api/contracts/${contractId}/dispute`, {
+    action: "approve_milestone", disputeId,
+  });
+}
+
+export async function proposeSettlement(contractId: string, disputeId: string, proposal: "approve" | "reject") {
+  return postApi<Dispute>(`/api/contracts/${contractId}/dispute`, {
+    action: "settle", disputeId, proposal,
+  });
+}
+
+export async function acceptSettlement(contractId: string, disputeId: string) {
+  return postApi<Dispute>(`/api/contracts/${contractId}/dispute`, {
+    action: "accept_settlement", disputeId,
+  });
+}
+
+export async function rejectSettlement(contractId: string, disputeId: string) {
+  return postApi<Dispute>(`/api/contracts/${contractId}/dispute`, {
+    action: "reject_settlement", disputeId,
+  });
+}
 
 export function useDisputes(contractId: string) {
   return useApi<Dispute[]>(`/api/contracts/${contractId}/dispute`);

@@ -1,4 +1,5 @@
 export type DisputePhase =
+  | "discussion"      // informal negotiation before formal dispute
   | "evidence"        // both parties submitting evidence
   | "kleros_payment"  // both need to pay arbitration fee
   | "kleros_review"   // jurors reviewing
@@ -19,11 +20,21 @@ export interface DisputeEvidence {
     | "contract_spec"
     | "deliverable"
     | "argument"
-    | "document";
+    | "document"
+    | "response";
   /** IPFS hash or on-chain reference */
   uri: string;
   description: string;
   submittedAt: Date;
+}
+
+export interface SettlementProposal {
+  proposedBy: "client" | "agency";
+  proposal: "approve" | "reject";
+  proposedAt: Date;
+  /** Whether the other party accepted */
+  accepted?: boolean;
+  respondedAt?: Date;
 }
 
 export interface Dispute {
@@ -51,6 +62,12 @@ export interface Dispute {
 
   /** Evidence submitted by parties */
   evidence: DisputeEvidence[];
+
+  /** Discussion phase deadline (48h from creation) */
+  discussionDeadline?: Date;
+
+  /** Settlement proposal (if any) */
+  settlement?: SettlementProposal;
 
   createdAt: Date;
   resolvedAt?: Date;

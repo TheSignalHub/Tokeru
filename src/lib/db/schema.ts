@@ -101,6 +101,8 @@ export const disputes = pgTable("disputes", {
   feeDeadline: text("fee_deadline"),
   ruling: integer("ruling"),
   evidence: text("evidence").notNull().default("[]"),
+  discussionDeadline: text("discussion_deadline"),
+  settlement: text("settlement"),
   createdAt: text("created_at").notNull(),
   resolvedAt: text("resolved_at"),
 });

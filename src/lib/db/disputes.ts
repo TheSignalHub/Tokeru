@@ -1,4 +1,4 @@
-import type { Dispute, DisputeEvidence, PartyResponse } from "@/lib/types";
+import type { Dispute, DisputeEvidence, PartyResponse, SettlementProposal } from "@/lib/types";
 import { getDb } from "./client";
 import { disputes as disputesTable } from "./schema";
 import { eq } from "drizzle-orm";
@@ -26,6 +26,8 @@ function rowToDispute(row: typeof disputesTable.$inferSelect): Dispute {
       ...e,
       submittedAt: new Date(e.submittedAt),
     })),
+    discussionDeadline: row.discussionDeadline ? new Date(row.discussionDeadline) : undefined,
+    settlement: row.settlement ? JSON.parse(row.settlement) as SettlementProposal : undefined,
     createdAt: new Date(row.createdAt),
     resolvedAt: row.resolvedAt ? new Date(row.resolvedAt) : undefined,
   };
@@ -65,6 +67,8 @@ export async function createDispute(
     feeDeadline: data.feeDeadline?.toISOString() ?? null,
     ruling: data.ruling ?? null,
     evidence: JSON.stringify(data.evidence ?? []),
+    discussionDeadline: data.discussionDeadline?.toISOString() ?? null,
+    settlement: data.settlement ? JSON.stringify(data.settlement) : null,
     createdAt: now,
     resolvedAt: data.resolvedAt?.toISOString() ?? null,
   });
@@ -104,6 +108,12 @@ export async function update(id: string, data: Partial<Dispute>): Promise<Disput
     }),
     ...(data.ruling !== undefined && { ruling: data.ruling ?? null }),
     ...(data.evidence !== undefined && { evidence: JSON.stringify(data.evidence) }),
+    ...(data.discussionDeadline !== undefined && {
+      discussionDeadline: data.discussionDeadline?.toISOString() ?? null,
+    }),
+    ...(data.settlement !== undefined && {
+      settlement: data.settlement ? JSON.stringify(data.settlement) : null,
+    }),
     ...(data.resolvedAt !== undefined && {
       resolvedAt: data.resolvedAt?.toISOString() ?? null,
     }),

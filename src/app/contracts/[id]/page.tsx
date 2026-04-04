@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft, CheckCircle, Clock, AlertTriangle, XCircle,
   Coins, Upload, ExternalLink, Loader2, Eye, ShieldAlert, Wallet, Zap, Mail, BadgeCheck,
-  ChevronDown, Copy,
+  ChevronDown, Copy, MessageCircle,
 } from "lucide-react";
 import {
   useContract,
@@ -330,25 +330,30 @@ function MilestonesTab(props: TabProps) {
                         </div>
                       )}
                       {isRejected && (
-                        <div className="flex flex-col sm:flex-row gap-2 mt-4 pt-4 border-t border-border/50">
-                          <Link
-                            href={`/contracts/${id}/dispute?milestone=${m.id}`}
-                            className="flex-1 inline-flex items-center justify-center h-9 px-4 rounded-lg bg-danger/10 text-danger text-sm font-semibold border border-danger/30 hover:bg-danger/15 active:scale-[0.98] transition-all"
-                          >
-                            <ShieldAlert className="h-4 w-4 mr-2" /> Start Dispute
-                          </Link>
-                          <Link
-                            href={`/contracts/${id}/deliver`}
-                            className="flex-1 inline-flex items-center justify-center h-9 px-4 rounded-lg border border-border text-muted text-sm font-semibold hover:text-foreground hover:border-accent/50 active:scale-[0.98] transition-all"
-                          >
-                            Accept Rejection
-                          </Link>
+                        <div className="mt-4 pt-4 border-t border-border/50">
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Link
+                              href={`/contracts/${id}/dispute?milestone=${m.id}`}
+                              className="flex-1 inline-flex items-center justify-center h-9 px-4 rounded-lg bg-accent text-accent-foreground text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
+                            >
+                              <MessageCircle className="h-4 w-4 mr-2" /> Respond to Rejection
+                            </Link>
+                            <Link
+                              href={`/contracts/${id}/deliver`}
+                              className="flex-1 inline-flex items-center justify-center h-9 px-4 rounded-lg border border-border text-muted text-sm font-semibold hover:text-foreground hover:border-accent/50 active:scale-[0.98] transition-all"
+                            >
+                              Accept &amp; Revise
+                            </Link>
+                          </div>
+                          <p className="text-xs text-muted mt-2">
+                            If you cannot reach agreement, you can escalate to arbitration.
+                          </p>
                         </div>
                       )}
                       {isDisputed && (
                         <div className="mt-4 pt-4 border-t border-border/50">
-                          <Link href={`/contracts/${id}/dispute`} className="inline-flex items-center gap-2 text-sm font-semibold text-danger hover:underline">
-                            <ExternalLink className="h-3.5 w-3.5" /> View Dispute
+                          <Link href={`/contracts/${id}/dispute`} className="inline-flex items-center gap-2 text-sm font-semibold text-accent hover:underline">
+                            <ExternalLink className="h-3.5 w-3.5" /> View Review
                           </Link>
                         </div>
                       )}
@@ -502,8 +507,8 @@ function MilestonesTab(props: TabProps) {
                       )}
                       {isDisputed && (
                         <div className="mt-4 pt-4 border-t border-border/50">
-                          <Link href={`/contracts/${id}/dispute`} className="inline-flex items-center gap-2 text-sm font-semibold text-danger hover:underline">
-                            <ExternalLink className="h-3.5 w-3.5" /> View Dispute
+                          <Link href={`/contracts/${id}/dispute`} className="inline-flex items-center gap-2 text-sm font-semibold text-accent hover:underline">
+                            <ExternalLink className="h-3.5 w-3.5" /> View Review
                           </Link>
                         </div>
                       )}

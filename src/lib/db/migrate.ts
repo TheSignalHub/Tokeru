@@ -193,6 +193,8 @@ export async function ensureTables() {
   await safeAlter("agency_profiles", "logo_url", "TEXT");
   await safeAlter("agency_profiles", "categories", "TEXT NOT NULL DEFAULT '[]'");
   await safeAlter("users", "unlink_mnemonic", "TEXT");
+  await safeAlter("disputes", "discussion_deadline", "TEXT");
+  await safeAlter("disputes", "settlement", "TEXT");
 
   // Indexes (wrapped in try/catch so a missing column doesn't block the whole app)
   await getDb().execute(sql`CREATE INDEX IF NOT EXISTS idx_milestones_contract ON milestones(contract_id)`);

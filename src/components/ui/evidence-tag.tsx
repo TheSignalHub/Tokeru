@@ -8,6 +8,7 @@ export function EvidenceTag({ type }: EvidenceTagProps) {
   const colorMap: Record<string, "default" | "success" | "warning" | "danger"> = {
     argument: "default",
     document: "default",
+    response: "default",
     testimony: "warning",
     ruling: "success",
   };
