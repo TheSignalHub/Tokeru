@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db, ensureInit } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { validateDeposit, createDepositRecord } from "@/lib/payments/escrow";
-import { depositEscrow, isBlockchainConfigured } from "@/lib/blockchain";
+import { depositEscrow, isBlockchainConfigured, createDeal, isFactoryConfigured } from "@/lib/blockchain";
 
 const DepositSchema = z.object({
   amount: z.number().positive(),
@@ -44,7 +44,44 @@ export async function POST(
 
     let txHash = parsed.data.txHash || `db_${Date.now().toString(36)}`;
 
-    // ── Chain-first: if contract is on-chain, deposit must succeed on-chain ──
+    // ── Deploy on-chain if not yet deployed (this is THE moment — money is entering) ──
+    if (!contract.onChainAddress && isFactoryConfigured() && contract.client && contract.agency) {
+      try {
+        console.log("[deposit] Contract not on-chain yet — deploying via factory...");
+        const result = await createDeal({
+          client: contract.client,
+          agency: contract.agency,
+          bd: contract.bd,
+          bdFeeBps: Math.round((contract.bdFeePercent ?? 0) * 100),
+          termsHash: contract.termsHash || `terms_${contract.id}`,
+          milestones: contract.milestones.map((m) => ({
+            name: m.name,
+            amount: BigInt(Math.round(m.amount * 1e18)),
+            deadline: m.deadline ? Math.floor(new Date(m.deadline).getTime() / 1000) : 0,
+          })),
+          tokenName: `${contract.title} Token`,
+          tokenSymbol: (contract.title.split(/\s+/).map(w => w[0]).join("").toUpperCase().slice(0, 4) || "DEAL") + contract.id.slice(0, 2).toUpperCase(),
+        });
+
+        contract.onChainAddress = result.serviceContractAddress;
+        contract.tokenAddress = result.tokenAddress;
+
+        await db.contracts.update(id, {
+          onChainAddress: result.serviceContractAddress,
+          tokenAddress: result.tokenAddress,
+        });
+        console.log("[deposit] Deployed:", result.serviceContractAddress, "token:", result.tokenAddress);
+      } catch (chainErr) {
+        const msg = chainErr instanceof Error ? chainErr.message : String(chainErr);
+        console.error("[deposit] Factory deploy FAILED:", msg);
+        return Response.json(
+          { error: `On-chain deployment failed: ${msg}` },
+          { status: 500 },
+        );
+      }
+    }
+
+    // ── Chain-first: deposit escrow on-chain ──
     if (contract.onChainAddress && isBlockchainConfigured()) {
       try {
         txHash = await depositEscrow(

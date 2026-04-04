@@ -1,7 +1,7 @@
 import { type NextRequest } from "next/server";
 import { db, ensureInit } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
-import { isBlockchainConfigured, createDeal, isFactoryConfigured } from "@/lib/blockchain";
+// On-chain deployment moved to deposit route
 import { notifyUser } from "@/lib/email";
 
 // GET: Look up contract by invite token, return summary with milestones
@@ -136,40 +136,8 @@ export async function POST(
       });
     }
 
-    // Deploy on-chain via factory now that both parties are known
-    const updated = await db.contracts.findById(contract.id);
-    if (updated && !updated.onChainAddress && isFactoryConfigured() && updated.client && updated.agency) {
-      try {
-        const result = await createDeal({
-          client: updated.client,
-          agency: updated.agency,
-          bd: updated.bd,
-          bdFeeBps: Math.round((updated.bdFeePercent ?? 0) * 100),
-          termsHash: updated.termsHash || `terms_${updated.id}`,
-          milestones: updated.milestones.map((m) => ({
-            name: m.name,
-            amount: BigInt(Math.round(m.amount * 1e18)),
-            deadline: m.deadline ? Math.floor(m.deadline.getTime() / 1000) : 0,
-          })),
-          tokenName: `${updated.title} Token`,
-          tokenSymbol: (updated.title.split(/\s+/).map(w => w[0]).join("").toUpperCase().slice(0, 4) || "DEAL") + updated.id.slice(0, 2).toUpperCase(),
-        });
-
-        await db.contracts.update(updated.id, {
-          onChainAddress: result.serviceContractAddress,
-          tokenAddress: result.tokenAddress,
-        });
-
-        console.log("[invite/POST] On-chain deployed:", result.serviceContractAddress, "token:", result.tokenAddress);
-      } catch (chainErr) {
-        const msg = chainErr instanceof Error ? chainErr.message : String(chainErr);
-        console.error("[invite/POST] Factory deploy FAILED:", msg);
-        return Response.json(
-          { error: `Invite accepted but on-chain deployment failed: ${msg}` },
-          { status: 500 },
-        );
-      }
-    }
+    // On-chain deployment happens at escrow deposit time, not here.
+    // Contract stays DB-only until real money enters.
 
     return Response.json({
       contractId: contract.id,
