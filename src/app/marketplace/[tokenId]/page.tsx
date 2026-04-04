@@ -453,40 +453,59 @@ export default function TokenDetailPage() {
           </SectionCard>
 
           {/* Agency Card */}
-          <a
-            href={`https://thesignal.directory/agency/${agencyId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block rounded-xl border border-border bg-surface p-6 hover:border-brand/50 transition-colors"
-          >
-            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-              <Shield className="h-4 w-4 text-brand" /> Agency Profile
-              <ExternalLink className="h-3 w-3 ml-auto text-muted" />
-            </h3>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-10 w-10 rounded-full bg-brand/20 flex items-center justify-center text-sm font-bold text-brand">
-                {agencyInitial}
-              </div>
-              <div>
-                <div className="font-medium">
-                  {apiToken.agency.name ?? "Unknown Agency"}
-                </div>
-                <div className="text-xs text-muted">
-                  {apiToken.agency.verified ? "Verified agency" : "Unverified"}
-                </div>
-              </div>
-            </div>
-            {apiToken.agency.score != null && (
-              <div className="grid grid-cols-1 gap-3">
-                <div className="text-center p-2 rounded-lg bg-surface-secondary">
-                  <div className="text-lg font-bold text-success">
-                    {apiToken.agency.score}
+          {(() => {
+            const isOwnAgency = walletAddress?.toLowerCase() === agencyId.toLowerCase();
+            const cardContent = (
+              <>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-brand" />
+                  {isOwnAgency ? "Your Agency Profile" : "Agency Profile"}
+                  {!isOwnAgency && <ExternalLink className="h-3 w-3 ml-auto text-muted" />}
+                </h3>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-full bg-brand/20 flex items-center justify-center text-sm font-bold text-brand">
+                    {agencyInitial}
                   </div>
-                  <div className="text-xs text-muted">Reputation Score</div>
+                  <div>
+                    <div className="font-medium">
+                      {apiToken.agency.name ?? "Unknown Agency"}
+                    </div>
+                    <div className="text-xs text-muted">
+                      {apiToken.agency.verified ? "Verified agency" : "Unverified"}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
-          </a>
+                {apiToken.agency.score != null && (
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="text-center p-2 rounded-lg bg-surface-secondary">
+                      <div className="text-lg font-bold text-success">
+                        {apiToken.agency.score}
+                      </div>
+                      <div className="text-xs text-muted">Reputation Score</div>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+
+            return isOwnAgency ? (
+              <Link
+                href="/profile"
+                className="block rounded-xl border border-border bg-surface p-6 hover:border-brand/50 transition-colors"
+              >
+                {cardContent}
+              </Link>
+            ) : (
+              <a
+                href={`https://thesignal.directory/agency/${agencyId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-xl border border-border bg-surface p-6 hover:border-brand/50 transition-colors"
+              >
+                {cardContent}
+              </a>
+            );
+          })()}
 
           {/* Contract Info */}
           <SectionCard title="Contract Info">

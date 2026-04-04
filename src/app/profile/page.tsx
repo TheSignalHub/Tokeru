@@ -22,6 +22,7 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useProfile } from "@/hooks/use-profile";
 import { useApi } from "@/hooks/use-api";
 import {
@@ -638,11 +639,16 @@ export default function ProfilePage() {
   );
   const streak = completed; // simplified streak = completed count
   const reputationScore = useMemo(() => {
+    // Use the real score from the DB (computed by computeAgencyScore())
+    if (profile?.agencyProfile?.score != null) {
+      return profile.agencyProfile.score;
+    }
+    // Fallback: simple completion rate if no agency profile score
     if (apiContracts.length === 0) return 0;
     const completionRate =
       completed + failed > 0 ? (completed / (completed + failed)) * 100 : 0;
     return Math.round(completionRate);
-  }, [apiContracts, completed, failed]);
+  }, [profile?.agencyProfile?.score, apiContracts, completed, failed]);
   const onTimeDelivery = useMemo(() => {
     if (apiContracts.length === 0) return 0;
     return Math.round(
@@ -845,10 +851,22 @@ export default function ProfilePage() {
           agencyProfile={profile?.agencyProfile}
           team={team}
           onSaveProfile={async (data) => {
-            await updateAgencyProfile(data);
+            try {
+              await updateAgencyProfile(data);
+              toast.success("Agency profile saved");
+            } catch (err) {
+              toast.error("Failed to save agency profile");
+              throw err;
+            }
           }}
           onInviteMember={async (email, name, role) => {
-            await inviteTeamMember({ email, name, role });
+            try {
+              await inviteTeamMember({ email, name, role });
+              toast.success("Invite sent");
+            } catch (err) {
+              toast.error("Failed to send invite");
+              throw err;
+            }
           }}
           onRefresh={refreshProfile}
         />
@@ -987,7 +1005,13 @@ export default function ProfilePage() {
         <DocumentUploadSection
           attestations={attestations}
           onUpload={async (file, label) => {
-            await uploadDocument(file, label);
+            try {
+              await uploadDocument(file, label);
+              toast.success("Document uploaded");
+            } catch (err) {
+              toast.error("Failed to upload document");
+              throw err;
+            }
           }}
         />
       </SectionCard>
