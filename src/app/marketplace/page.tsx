@@ -55,19 +55,23 @@ export default function MarketplacePage() {
   const { listings, loading } = useMarketplace();
 
   const activeData = useMemo<ActiveListing[]>(() => {
-    return listings.map((c: MarketplaceListing): ActiveListing => ({
-      id: c.tokenId,
-      title: c.title,
-      category: c.category.charAt(0).toUpperCase() + c.category.slice(1),
-      agency: c.agency.name ?? truncateMiddle(c.agency.address, 6, 4),
-      agencyAddress: c.agency.address,
-      score: c.avgScore ?? 0,
-      aiStatus: c.status === "active" ? "Verified" : "Pending",
-      value: formatCurrency(c.totalValue),
-      tokenPrice: formatCurrency(c.totalValue / 10_000, "$"),
-      tokensAvailable: Math.max(0, 10_000 - Math.round(c.progress * 100)),
-      progress: Math.round((c.completedMilestones / Math.max(c.totalMilestones, 1)) * 100),
-    }));
+    return listings.map((c: MarketplaceListing): ActiveListing => {
+      const price = c.pricePerToken ?? 1;
+      const supply = c.totalSupply ?? c.totalValue;
+      return {
+        id: c.tokenId,
+        title: c.title,
+        category: c.category.charAt(0).toUpperCase() + c.category.slice(1),
+        agency: c.agency.name ?? truncateMiddle(c.agency.address, 6, 4),
+        agencyAddress: c.agency.address,
+        score: c.avgScore ?? 0,
+        aiStatus: c.status === "active" ? "Verified" : "Pending",
+        value: formatCurrency(c.totalValue),
+        tokenPrice: formatCurrency(price, "$"),
+        tokensAvailable: supply,
+        progress: Math.round((c.completedMilestones / Math.max(c.totalMilestones, 1)) * 100),
+      };
+    });
   }, [listings]);
 
   const filtered = useMemo(() => {

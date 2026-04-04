@@ -80,14 +80,13 @@ export default function TokenDetailPage() {
 
   const pricePerToken = apiToken.pricePerToken;
   const totalSupply = apiToken.totalSupply;
-  // Face value per token is totalValue / totalSupply (= pricePerToken at issuance)
-  // Yield is the expected return as a percentage of cost vs face value
-  // For display purposes: yield = (totalValue - totalCost) / totalCost * 100
-  // Since price == face value at hackathon, we show a fixed illustrative yield
-  const faceValuePerToken = apiToken.totalValue / totalSupply;
+  const deployedOnChain = apiToken.deployedOnChain;
+  // Face value is always $1.00 per token
+  const faceValuePerToken = 1.0;
   const parsedAmount = parseFloat(buyAmount) || 0;
   const totalCost = parsedAmount * pricePerToken;
   const faceValue = parsedAmount * faceValuePerToken;
+  // Yield = (faceValue / cost - 1) * 100 = (1/pricePerToken - 1) * 100
   const yieldAmount = faceValue - totalCost;
   const yieldPercent =
     totalCost > 0 ? ((yieldAmount / totalCost) * 100).toFixed(1) : "0.0";
@@ -314,7 +313,28 @@ export default function TokenDetailPage() {
             title="Invest in This Token"
             className="border-accent/30 sticky top-24 z-10"
           >
-            {buyResult ? (
+            {!deployedOnChain ? (
+              /* Contract not deployed on-chain */
+              <div className="space-y-4">
+                <div className="flex flex-col items-center gap-3 py-4">
+                  <div className="h-12 w-12 rounded-full bg-warning/15 flex items-center justify-center">
+                    <AlertCircle className="h-6 w-6 text-warning" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-semibold text-warning">Contract Not Available</p>
+                    <p className="text-sm text-muted mt-1">
+                      This contract&apos;s on-chain deployment is no longer available. The agency needs to re-tokenize it.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/marketplace"
+                  className="flex items-center justify-center gap-2 w-full h-10 px-4 rounded-md bg-surface-secondary text-foreground font-medium shadow-sm active:scale-[0.98] transition-all text-sm border border-border"
+                >
+                  Back to Marketplace
+                </Link>
+              </div>
+            ) : buyResult ? (
               /* Success state */
               <div className="space-y-4">
                 <div className="flex flex-col items-center gap-3 py-4">

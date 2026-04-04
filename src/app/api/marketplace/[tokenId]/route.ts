@@ -4,6 +4,7 @@ import { db, ensureInit } from "@/lib/db";
 import type { TokenizationExposure } from "@/lib/types/contract";
 import { DEFAULT_EXPOSURE } from "@/lib/types/contract";
 import { CHAIN_CONFIG } from "@/lib/blockchain/config";
+import { isBlockchainConfigured } from "@/lib/blockchain";
 import { getProvider } from "@/lib/blockchain/clients";
 import { getPoolAddress, getPoolInfo } from "@/lib/uniswap";
 
@@ -80,6 +81,32 @@ export async function GET(
     const totalSupply = exposure.totalSupply ?? contract.totalValue;
     const pricePerToken = exposure.pricePerToken ?? 1;
 
+    // Check on-chain deployment validity
+    let deployedOnChain = !!(
+      contract.onChainAddress &&
+      contract.onChainAddress.length > 2 &&
+      contract.tokenAddress &&
+      contract.tokenAddress.length > 2 &&
+      !contract.tokenAddress.startsWith("0xtoken")
+    );
+
+    // If addresses look valid, verify on-chain code exists
+    if (deployedOnChain && isBlockchainConfigured() && contract.tokenAddress) {
+      try {
+        const provider = getProvider();
+        const tokenContract = new ethers.Contract(
+          contract.tokenAddress,
+          ["function totalSupply() view returns (uint256)"],
+          provider,
+        );
+        await tokenContract.totalSupply();
+        // Call succeeded — contract is live on-chain
+      } catch {
+        // Call failed — contract address is dead (e.g. Anvil restarted)
+        deployedOnChain = false;
+      }
+    }
+
     return Response.json({
       id: contract.id,
       title: contract.title,
@@ -88,10 +115,11 @@ export async function GET(
       status: contract.status,
       tokenAddress: contract.tokenAddress,
       onChainAddress: contract.onChainAddress,
+      deployedOnChain,
       createdAt: contract.createdAt,
       updatedAt: contract.updatedAt,
-      tokenName: contract.title,
-      tokenSymbol: "IDT",
+      tokenName: exposure.tokenName ?? contract.title,
+      tokenSymbol: exposure.tokenSymbol ?? "IDT",
       totalSupply,
       pricePerToken,
       // Uniswap V3 pool data (null if pool not yet created)

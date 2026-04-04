@@ -13,6 +13,11 @@ export interface MarketplaceListing {
   completedMilestones: number;
   totalMilestones: number;
   avgScore: number;
+  tokenName: string | null;
+  tokenSymbol: string | null;
+  pricePerToken: number | null;
+  totalSupply: number | null;
+  deployedOnChain: boolean;
   agency: {
     address: string;
     name: string | null;
@@ -44,6 +49,7 @@ export interface TokenDetail {
     proofHash?: string;
   }>;
   tokenAddress?: string;
+  deployedOnChain: boolean;
   tokenName: string;
   tokenSymbol: string;
   totalSupply: number;

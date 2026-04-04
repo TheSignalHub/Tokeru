@@ -14,7 +14,7 @@ export async function GET() {
     const tokenizedContracts = allContracts
       .filter((c) => c.tokenAddress && c.tokenizationExposure);
 
-    const listings = await Promise.all(tokenizedContracts.map(async (contract) => {
+    const listingsRaw = await Promise.all(tokenizedContracts.map(async (contract) => {
         const completedMilestones = contract.milestones.filter(
           (m) => m.status === "approved",
         ).length;
@@ -63,6 +63,15 @@ export async function GET() {
           }
         }
 
+        // Check if on-chain deployment is still valid (without calling chain)
+        const hasValidOnChain = !!(
+          contract.onChainAddress &&
+          contract.onChainAddress.length > 2 &&
+          contract.tokenAddress &&
+          contract.tokenAddress.length > 2 &&
+          !contract.tokenAddress.startsWith("0xtoken")
+        );
+
         return {
           tokenId: contract.id,
           tokenAddress: contract.tokenAddress,
@@ -79,6 +88,8 @@ export async function GET() {
           tokenSymbol: exposure?.tokenSymbol ?? null,
           pricePerToken: exposure?.pricePerToken ?? null,
           totalSupply: exposure?.totalSupply ?? null,
+          // On-chain deployment status
+          deployedOnChain: hasValidOnChain,
           // Uniswap pool availability
           hasPool,
           poolLiquidity,
@@ -91,6 +102,9 @@ export async function GET() {
           createdAt: contract.createdAt,
         };
       }));
+
+    // Filter out contracts with dead on-chain addresses
+    const listings = listingsRaw.filter((l) => l.deployedOnChain);
 
     return Response.json(listings);
   } catch (error) {

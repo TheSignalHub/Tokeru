@@ -974,6 +974,20 @@ export default function ContractDetailPage() {
                       Base Sepolia
                     </span>
                   </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted font-medium">Status</span>
+                    {contract.onChainAddress ? (
+                      <span className="flex items-center gap-1 text-xs font-semibold text-success">
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        On-chain
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs font-semibold text-warning">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        DB only — deploy when ready
+                      </span>
+                    )}
+                  </div>
                   <Link
                     href={`/marketplace/${id}`}
                     className="flex items-center justify-center h-8 rounded-md bg-surface-secondary text-accent text-xs font-semibold border border-border/60 hover:bg-default active:scale-[0.98] transition-all"
