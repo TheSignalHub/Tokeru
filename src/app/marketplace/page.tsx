@@ -96,7 +96,7 @@ export default function MarketplacePage() {
           Contract <span className="text-accent">Marketplace</span>
         </h1>
         <p className="text-muted text-base">
-          Invest in high-yield agency contracts powered by AI-verified milestones and decentralised escrow.
+          Invest in tokenized service contracts backed by on-chain escrow.
         </p>
       </div>
 

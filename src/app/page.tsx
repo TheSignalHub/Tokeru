@@ -46,7 +46,7 @@ const steps = [
     icon: FileText,
     title: "Create & Escrow",
     description:
-      "Agency creates a service contract with milestones. Client locks payment in escrow on Arbitrum.",
+      "Agency creates a service contract with milestones. Client locks payment in escrow on Base Sepolia.",
   },
   {
     icon: Coins,
@@ -67,7 +67,7 @@ const features = [
     icon: ShieldCheck,
     title: "On-Chain Escrow",
     description:
-      "Funds locked in smart contracts on Arbitrum. Payments release automatically when milestones are approved.",
+      "Funds locked in smart contracts on Base Sepolia. Payments release automatically when milestones are approved.",
   },
   {
     icon: Coins,
@@ -79,7 +79,7 @@ const features = [
     icon: Scale,
     title: "Kleros Court",
     description:
-      "Unresolved disputes escalate to decentralized jurors on Kleros v2 native on Arbitrum. Evidence-based, binding rulings.",
+      "Unresolved disputes escalate to decentralized jurors on Kleros v2. Evidence-based, binding rulings.",
   },
   {
     icon: TrendingUp,
@@ -205,7 +205,7 @@ export default function HomePage() {
           <div className="text-center max-w-3xl mx-auto">
             <motion.div variants={STAGGER_CHILD_VARIANTS} className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-sm font-medium mb-8 shadow-[0_0_15px_rgba(0,0,0,0.05)]">
               <SignalLogo size={20} className="rounded object-cover" />
-              <span className="text-foreground/80">Built on Arbitrum</span>
+              <span className="text-foreground/80">Built on Base Sepolia</span>
             </motion.div>
             <motion.h1 variants={STAGGER_CHILD_VARIANTS} className="text-5xl sm:text-7xl font-bold tracking-tighter leading-[1.1]">
               Turn Your Contracts Into{" "}
@@ -331,7 +331,20 @@ export default function HomePage() {
       </section>
 
       {/* Featured Contracts */}
-      {featuredContracts.length > 0 && (
+      {featuredContracts.length === 0 ? (
+        <section className="border-t border-border/50 bg-surface/30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 text-center">
+            <h2 className="text-4xl font-bold tracking-tight mb-4">Featured Contracts</h2>
+            <p className="text-muted text-lg mb-8">No contracts tokenized yet — be the first!</p>
+            <Link
+              href="/contracts/new"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-accent text-accent-foreground font-medium shadow-sm hover:bg-accent/90 transition-all active:scale-[0.98]"
+            >
+              Create Contract <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>
+      ) : (
         <section className="border-t border-border/50 bg-surface/30">
           <motion.div
             className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32"
@@ -399,7 +412,7 @@ export default function HomePage() {
           </motion.p>
           <div className="grid md:grid-cols-3 gap-6">
             <motion.div variants={STAGGER_CHILD_VARIANTS} className="rounded-2xl border border-brand/30 bg-surface/50 backdrop-blur-sm p-8 shadow-[0_0_25px_rgba(var(--brand-raw),0.05)]">
-              <div className="text-xs font-mono font-semibold text-brand mb-4 uppercase tracking-widest">Arbitrum</div>
+              <div className="text-xs font-mono font-semibold text-brand mb-4 uppercase tracking-widest">Base Sepolia</div>
               <h3 className="font-semibold text-xl mb-4 tracking-tight">Contract Layer</h3>
               <ul className="space-y-3 text-sm text-muted tracking-tight">
                 <li className="flex items-center gap-2"><div className="h-1.5 w-1.5 rounded-full bg-brand" /> Contract terms &amp; milestones</li>
@@ -423,7 +436,7 @@ export default function HomePage() {
               <h3 className="font-semibold text-xl mb-4 tracking-tight">Justice Layer</h3>
               <ul className="space-y-3 text-sm text-muted tracking-tight">
                 <li className="flex items-center gap-2"><div className="h-1.5 w-1.5 rounded-full bg-warning" /> Decentralized court</li>
-                <li className="flex items-center gap-2"><div className="h-1.5 w-1.5 rounded-full bg-warning" /> Native on Arbitrum</li>
+                <li className="flex items-center gap-2"><div className="h-1.5 w-1.5 rounded-full bg-warning" /> Decentralized arbitration</li>
                 <li className="flex items-center gap-2"><div className="h-1.5 w-1.5 rounded-full bg-warning" /> Evidence-based rulings</li>
                 <li className="flex items-center gap-2"><div className="h-1.5 w-1.5 rounded-full bg-warning" /> Binding outcomes</li>
               </ul>
@@ -448,7 +461,7 @@ export default function HomePage() {
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 text-center md:text-left text-xs font-mono text-muted/50 tracking-widest uppercase">
-          Built on Arbitrum | Kleros
+          Built on Base Sepolia | Kleros
         </div>
       </footer>
     </div>

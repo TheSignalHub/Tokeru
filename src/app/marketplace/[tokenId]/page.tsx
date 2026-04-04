@@ -351,6 +351,11 @@ export default function TokenDetailPage() {
             ) : (
               /* Buy form */
               <div className="space-y-4">
+                {/* How it works */}
+                <div className="p-3 rounded-lg bg-accent/5 border border-accent/20 text-xs text-muted leading-relaxed">
+                  When you buy tokens, they are minted directly to your wallet. Each token represents a $1.00 claim on the contract's future payouts. You buy at a discount and earn yield when milestones are completed.
+                </div>
+
                 <div className="flex justify-between text-sm">
                   <span className="text-muted">Price per token</span>
                   <span className="font-bold text-lg text-accent">
@@ -421,7 +426,12 @@ export default function TokenDetailPage() {
                     isDisabled={buying || !buyAmount || parsedAmount <= 0}
                     className="w-full bg-accent text-accent-foreground"
                   >
-                    {buying ? "Processing..." : `Buy ${buyAmount || "0"} ${apiToken.tokenSymbol}`}
+                    {buying ? (
+                      <span className="flex items-center gap-2">
+                        <Spinner size="sm" className="text-accent-foreground" />
+                        Processing...
+                      </span>
+                    ) : `Buy ${buyAmount || "0"} ${apiToken.tokenSymbol}`}
                   </Button>
                 ) : (
                   <Button
@@ -432,8 +442,11 @@ export default function TokenDetailPage() {
                   </Button>
                 )}
 
+                <p className="text-xs text-muted/70 text-center leading-relaxed">
+                  Tokens represent claims on future contract payouts. Returns depend on successful milestone completion.
+                </p>
                 <p className="text-xs text-muted text-center">
-                  Tokens are purchased on Arbitrum
+                  Tokens are purchased on Base Sepolia
                 </p>
               </div>
             )}

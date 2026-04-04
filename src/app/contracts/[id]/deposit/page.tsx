@@ -134,6 +134,15 @@ export default function DepositPage() {
         )}
       </SectionCard>
 
+      <div className="mb-6 p-4 rounded-xl border border-border bg-surface-secondary text-sm text-muted leading-relaxed">
+        <p className="font-medium text-foreground mb-1">How escrow works</p>
+        <p>
+          Your funds are locked in a smart contract — not held by the agency or the platform.
+          Funds are released automatically when you approve each milestone.
+          You can cancel and refund anytime before milestones are completed.
+        </p>
+      </div>
+
       <SectionCard className="mb-6">
         <div className="space-y-3 text-sm">
           <div className="flex justify-between py-2 border-b border-border/50">

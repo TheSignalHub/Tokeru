@@ -173,6 +173,16 @@ export default function InviteAcceptPage() {
         </CardContent>
       </Card>
 
+      {/* Terms explainer */}
+      <div className="mb-6 p-4 rounded-xl border border-border bg-surface-secondary text-sm text-muted leading-relaxed">
+        <p>
+          By accepting, you agree to the terms of this contract.{" "}
+          {invite.inviteRole === "client"
+            ? "As the client, you'll deposit escrow funds that are held in a smart contract until you approve each milestone."
+            : "As the agency, you'll deliver the specified milestones. Escrow funds are released to you as milestones are approved."}
+        </p>
+      </div>
+
       {/* Your role */}
       <Card className="border border-accent/30 bg-accent/5 mb-6">
         <CardContent className="p-4">

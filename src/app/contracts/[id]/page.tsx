@@ -38,6 +38,8 @@ export default function ContractDetailPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectForm, setShowRejectForm] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [poolLoading, setPoolLoading] = useState(false);
+  const [poolStatus, setPoolStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
   // ─── Role detection ─────────────────────────────────────────────────────────
   const isTokenized = !!contract?.tokenizationExposure;
@@ -523,6 +525,9 @@ export default function ContractDetailPage() {
                     value={escrowPct}
                     color="success"
                   />
+                  <p className="text-[11px] text-muted mt-3 leading-snug">
+                    Escrow is held by the smart contract. Released to the agency upon milestone approval.
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -784,6 +789,9 @@ export default function ContractDetailPage() {
                                               <label className="text-xs font-semibold text-danger">
                                                 Rejection Reason
                                               </label>
+                                              <p className="text-[11px] text-muted leading-snug">
+                                                Explain what needs to change. The agency can revise and re-submit.
+                                              </p>
                                               <TextArea
                                                 value={rejectReason}
                                                 onChange={(
@@ -902,12 +910,17 @@ export default function ContractDetailPage() {
                     </Link>
                   )}
                   {userRole === "agency" && contract.status === "active" && !isTokenized && (
-                    <Link
-                      href={`/contracts/${id}/tokenize`}
-                      className="flex items-center justify-center h-9 rounded-lg bg-brand/10 text-brand text-sm font-semibold hover:bg-brand/20 active:scale-[0.98] transition-all"
-                    >
-                      Tokenize Contract
-                    </Link>
+                    <div className="space-y-1.5">
+                      <Link
+                        href={`/contracts/${id}/tokenize`}
+                        className="flex items-center justify-center h-9 rounded-lg bg-brand/10 text-brand text-sm font-semibold hover:bg-brand/20 active:scale-[0.98] transition-all"
+                      >
+                        Tokenize Contract
+                      </Link>
+                      <p className="text-[11px] text-muted text-center leading-snug">
+                        Open this contract for investor participation. Set your price and let investors buy tokens.
+                      </p>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -949,21 +962,60 @@ export default function ContractDetailPage() {
                     </Link>
                   )}
                   {userRole === "agency" && (
-                    <button
-                      onClick={async () => {
-                        try {
-                          const res = await fetch(`/api/contracts/${id}/pool`, { method: "POST", headers: { "Content-Type": "application/json", ...(typeof window !== "undefined" && localStorage.getItem("trustsignal_wallet") ? { "X-Wallet-Address": localStorage.getItem("trustsignal_wallet")! } : {}) } });
-                          const data = await res.json();
-                          if (!res.ok) throw new Error(data.error);
-                          alert(data.poolExisted ? "Pool already active!" : "Uniswap pool activated!");
-                        } catch (err) {
-                          alert(err instanceof Error ? err.message : "Pool activation failed");
-                        }
-                      }}
-                      className="flex items-center justify-center h-8 rounded-md bg-surface-secondary text-xs font-semibold border border-brand/40 text-brand hover:bg-brand/10 active:scale-[0.98] transition-all"
-                    >
-                      Activate Uniswap Pool (Secondary Market)
-                    </button>
+                    <div className="space-y-1.5">
+                      {poolStatus === "success" ? (
+                        <div className="flex items-center gap-2 p-2 rounded-md bg-success/10 text-success text-xs font-medium">
+                          <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                          Pool active! Investors can now trade on Uniswap
+                        </div>
+                      ) : poolStatus === "error" ? (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2 p-2 rounded-md bg-danger/10 text-danger text-xs font-medium">
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                            Pool activation failed
+                          </div>
+                          <button
+                            onClick={() => setPoolStatus("idle")}
+                            className="flex items-center justify-center w-full h-8 rounded-md bg-surface-secondary text-xs font-semibold border border-brand/40 text-brand hover:bg-brand/10 active:scale-[0.98] transition-all"
+                          >
+                            Retry
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            disabled={poolStatus === "loading"}
+                            onClick={async () => {
+                              setPoolStatus("loading");
+                              setPoolLoading(true);
+                              try {
+                                const res = await fetch(`/api/contracts/${id}/pool`, { method: "POST", headers: { "Content-Type": "application/json", ...(typeof window !== "undefined" && localStorage.getItem("trustsignal_wallet") ? { "X-Wallet-Address": localStorage.getItem("trustsignal_wallet")! } : {}) } });
+                                const data = await res.json();
+                                if (!res.ok) throw new Error(data.error);
+                                setPoolStatus("success");
+                              } catch (err) {
+                                setPoolStatus("error");
+                              } finally {
+                                setPoolLoading(false);
+                              }
+                            }}
+                            className="flex items-center justify-center w-full h-8 rounded-md bg-surface-secondary text-xs font-semibold border border-brand/40 text-brand hover:bg-brand/10 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {poolStatus === "loading" ? (
+                              <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                                Creating pool...
+                              </>
+                            ) : (
+                              "Activate Uniswap Pool"
+                            )}
+                          </button>
+                          {poolStatus === "idle" && (
+                            <p className="text-[11px] text-muted text-center">Enable secondary market trading for your contract tokens</p>
+                          )}
+                        </>
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -998,7 +1050,7 @@ export default function ContractDetailPage() {
                       </div>
                       {evt.txHash ? (
                         <a
-                          href={`https://sepolia.arbiscan.io/tx/${evt.txHash}`}
+                          href={`https://sepolia.basescan.org/tx/${evt.txHash}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="font-mono text-accent hover:underline flex items-center gap-1"

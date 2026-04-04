@@ -168,7 +168,7 @@ export default function DeliverPage() {
           {/* Description — moved up for prominence */}
           <div>
             <label className="text-sm font-medium mb-2 block">
-              Description
+              Description <span className="text-danger">*</span>
             </label>
             <TextArea
               value={notes}
@@ -200,7 +200,7 @@ export default function DeliverPage() {
               />
               <Upload className="h-8 w-8 mx-auto text-muted mb-2" />
               <p className="text-sm text-muted">Drop files here or click to upload</p>
-              <p className="text-xs text-muted mt-1">Screenshots, documents, code exports (max 50MB)</p>
+              <p className="text-xs text-muted mt-1">Screenshots, documents, code exports (max 10MB)</p>
             </label>
             {files.length > 0 && (
               <div className="mt-3 space-y-1">
