@@ -5,7 +5,9 @@ import { baseSepolia } from "viem/chains";
 
 // Create Unlink client for a specific user (server-side only)
 export function createUnlinkClient(userMnemonic: string) {
-  const evmAccount = privateKeyToAccount(process.env.EVM_PRIVATE_KEY as `0x${string}`);
+  const evmKey = process.env.EVM_PRIVATE_KEY || process.env.DEPLOYER_PRIVATE_KEY;
+  if (!evmKey) throw new Error("No private key configured for Unlink (set DEPLOYER_PRIVATE_KEY)");
+  const evmAccount = privateKeyToAccount(evmKey as `0x${string}`);
 
   const walletClient = createWalletClient({
     account: evmAccount,
@@ -66,5 +68,5 @@ export async function privateWithdraw(
 }
 
 export function isUnlinkConfigured(): boolean {
-  return !!(process.env.UNLINK_API_KEY && process.env.EVM_PRIVATE_KEY);
+  return !!(process.env.UNLINK_API_KEY && (process.env.EVM_PRIVATE_KEY || process.env.DEPLOYER_PRIVATE_KEY));
 }
