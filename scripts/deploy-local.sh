@@ -51,19 +51,29 @@ if [ -n "$USDC_ADDR" ]; then
 else
   echo "  ⚠ Could not extract USDC address"
   echo "$USDC_OUTPUT" | tail -5
+  exit 1
 fi
 
-# Deploy ServiceContract + ContractToken
+# Deploy ContractFactory + AgencyProfile
 echo ""
-echo "[3/4] Deploying ServiceContract..."
-SC_OUTPUT=$(cd contracts && forge script script/Deploy.s.sol \
+echo "[3/4] Deploying ContractFactory + AgencyProfile..."
+DEPLOY_OUTPUT=$(cd contracts && forge script script/Deploy.s.sol \
   --rpc-url http://localhost:8545 \
   --broadcast --unlocked 2>&1)
 
-SC_ADDR=$(echo "$SC_OUTPUT" | grep "ServiceContract:" | awk '{print $NF}')
-TOKEN_ADDR=$(echo "$SC_OUTPUT" | grep "ContractToken:" | awk '{print $NF}')
-[ -n "$SC_ADDR" ] && echo "  ✓ ServiceContract: $SC_ADDR"
-[ -n "$TOKEN_ADDR" ] && echo "  ✓ ContractToken:   $TOKEN_ADDR"
+FACTORY_ADDR=$(echo "$DEPLOY_OUTPUT" | grep "ContractFactory:" | awk '{print $NF}')
+PROFILE_ADDR=$(echo "$DEPLOY_OUTPUT" | grep "AgencyProfile:" | awk '{print $NF}')
+
+if [ -n "$FACTORY_ADDR" ]; then
+  echo "  ✓ ContractFactory:  $FACTORY_ADDR"
+else
+  echo "  ⚠ Could not extract Factory address. Output:"
+  echo "$DEPLOY_OUTPUT" | tail -10
+fi
+
+if [ -n "$PROFILE_ADDR" ]; then
+  echo "  ✓ AgencyProfile:   $PROFILE_ADDR"
+fi
 
 # Verify Uniswap is available (from fork)
 echo ""
@@ -88,7 +98,8 @@ echo "  NEXT_PUBLIC_RPC_URL=http://localhost:8545"
 echo "  DEPLOYER_PRIVATE_KEY=$DEPLOYER_KEY"
 echo "  PLATFORM_TREASURY=$DEPLOYER_ADDR"
 [ -n "$USDC_ADDR" ] && echo "  PAYMENT_TOKEN_ADDRESS=$USDC_ADDR"
-[ -n "$SC_ADDR" ] && echo "  SERVICE_CONTRACT_ADDRESS=$SC_ADDR"
+[ -n "$FACTORY_ADDR" ] && echo "  CONTRACT_FACTORY_ADDRESS=$FACTORY_ADDR"
+[ -n "$PROFILE_ADDR" ] && echo "  AGENCY_PROFILE_ADDRESS=$PROFILE_ADDR"
 echo ""
 echo "  Uniswap V3 (from Base Sepolia fork):"
 echo "  UNISWAP_FACTORY=0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24"
