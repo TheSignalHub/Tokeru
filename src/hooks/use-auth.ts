@@ -41,9 +41,17 @@ function useLocalAuth() {
     const eth = (window as unknown as { ethereum?: { on: (e: string, cb: (accounts: string[]) => void) => void } }).ethereum;
     if (!eth) return;
     const handler = (accounts: string[]) => {
-      if (accounts[0]) {
-        setAddress(accounts[0]);
-        setGlobalAuth(accounts[0]);
+      const newAddr = accounts[0] ?? null;
+      const current = getGlobalWallet();
+      if (current && newAddr && current.toLowerCase() !== newAddr.toLowerCase()) {
+        // Address changed — update auth then reload to reset all page state
+        setGlobalAuth(newAddr);
+        window.location.reload();
+        return;
+      }
+      if (newAddr) {
+        setAddress(newAddr);
+        setGlobalAuth(newAddr);
       } else {
         setAddress(null);
         setGlobalAuth(null);

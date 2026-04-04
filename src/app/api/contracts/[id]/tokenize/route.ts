@@ -1,12 +1,6 @@
-import { ethers } from "ethers";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 import { db, ensureInit } from "@/lib/db";
-import { isBlockchainConfigured } from "@/lib/blockchain";
-import { CHAIN_CONFIG } from "@/lib/blockchain/config";
-import { getDeployerSigner } from "@/lib/blockchain/clients";
-import { SERVICE_CONTRACT_ABI } from "@/lib/blockchain/abis";
-import { createPool, addLiquidity } from "@/lib/uniswap";
 import { requireAuth } from "@/lib/auth";
 import type { TokenizationExposure } from "@/lib/types/contract";
 import { DEFAULT_EXPOSURE } from "@/lib/types/contract";
@@ -28,10 +22,9 @@ const TokenizeBodySchema = z.object({
 /**
  * POST /api/contracts/:id/tokenize
  *
- * Agency-only. Marks a contract as tokenized, then best-effort:
- *  1. Deploys ContractToken (ERC20) if bytecode is available
- *  2. Creates a Uniswap V3 pool (ContractToken / USDC)
- *  3. Adds initial liquidity to the pool
+ * Agency-only. Marks a contract as investable by setting price, supply, and
+ * exposure settings. No on-chain minting — tokens are minted on demand when
+ * investors buy (see /api/marketplace/[tokenId]/buy).
  */
 export async function POST(
   request: NextRequest,
@@ -49,12 +42,10 @@ export async function POST(
       return Response.json({ error: "Contract not found" }, { status: 404 });
     }
 
-    // Only agency can tokenize
     if (contract.agency.toLowerCase() !== auth.user!.walletAddress?.toLowerCase()) {
       return Response.json({ error: "Only the agency can tokenize this contract" }, { status: 403 });
     }
 
-    // Contract must be active (escrow deposited)
     if (contract.status !== "active") {
       return Response.json(
         { error: "Contract must be active (escrow deposited) before tokenization" },
@@ -62,7 +53,6 @@ export async function POST(
       );
     }
 
-    // Already tokenized?
     if (contract.tokenizationExposure) {
       return Response.json({ error: "Contract is already tokenized" }, { status: 400 });
     }
@@ -81,101 +71,25 @@ export async function POST(
     const exposureSettings: TokenizationExposure = {
       ...DEFAULT_EXPOSURE,
       ...exposure,
+      // Store pricing info for the buy route
+      tokenName,
+      tokenSymbol,
+      totalSupply,
+      pricePerToken,
     };
 
-    let tokenAddress: string | undefined = contract.tokenAddress ?? undefined;
-    let poolAddress: string | undefined;
-
-    // ── On-chain: deploy ContractToken + create Uniswap pool ─────────────────
-    if (isBlockchainConfigured() && CHAIN_CONFIG.paymentTokenAddress) {
-      try {
-        const signer = getDeployerSigner();
-        const agencyAddress = await signer.getAddress();
-
-        // 1. Mint tokens on the factory-deployed ContractToken (already deployed by createDeal)
-        if (!tokenAddress) {
-          console.warn(`[tokenize] No tokenAddress on contract — factory may not have deployed yet`);
-          return Response.json(
-            { error: "Contract token not deployed. The contract must be created on-chain first (both parties must be set)." },
-            { status: 400 },
-          );
-        }
-
-        // Mint tokens via ServiceContract.mintTokens() (it owns the ContractToken)
-        if (!contract.onChainAddress) {
-          return Response.json(
-            { error: "Contract not deployed on-chain yet." },
-            { status: 400 },
-          );
-        }
-        {
-          // Mint tokens to the deployer (operator) so it can provide initial Uniswap liquidity
-          const deployerAddress = await signer.getAddress();
-          console.log(`[tokenize] ServiceContract: ${contract.onChainAddress}, Token: ${tokenAddress}`);
-          const sc = new ethers.Contract(contract.onChainAddress, SERVICE_CONTRACT_ABI, signer);
-          const mintAmount = ethers.parseUnits(totalSupply.toString(), 18);
-          const nonce = await signer.getNonce();
-          const tx = await sc.mintTokens(deployerAddress, mintAmount, { gasLimit: 300_000, nonce });
-          await tx.wait(1);
-          console.log(`[tokenize] Minted ${totalSupply} tokens to deployer for liquidity provisioning`);
-        }
-
-        if (tokenAddress) {
-          // 2. Create Uniswap V3 pool (ContractToken / USDC)
-          poolAddress = await createPool({
-            tokenAddress,
-            usdcAddress: CHAIN_CONFIG.paymentTokenAddress,
-            initialPrice: pricePerToken, // USDC per token
-            signer,
-          });
-          console.log(`[tokenize] Uniswap pool created: ${poolAddress}`);
-
-          // 3. Add initial liquidity
-          if (poolAddress && poolAddress !== ethers.ZeroAddress) {
-            const tokenAmount = ethers.parseUnits(totalSupply.toString(), 18);
-            // Query USDC decimals (test tUSDC = 18, real USDC = 6)
-            const usdcContract = new ethers.Contract(
-              CHAIN_CONFIG.paymentTokenAddress,
-              ["function decimals() view returns (uint8)"],
-              signer,
-            );
-            const usdcDecimals = await usdcContract.decimals().then(Number).catch(() => 18);
-            const usdcAmount = ethers.parseUnits(
-              (totalSupply * pricePerToken).toString(),
-              usdcDecimals,
-            );
-
-            await addLiquidity({
-              tokenAddress,
-              usdcAddress: CHAIN_CONFIG.paymentTokenAddress,
-              tokenAmount,
-              usdcAmount,
-              signer,
-            });
-            console.log(`[tokenize] Initial liquidity added to pool`);
-          }
-        }
-      } catch (chainErr) {
-        const msg = chainErr instanceof Error ? chainErr.message : String(chainErr);
-        console.error("[tokenize] On-chain failed:", msg);
-        return Response.json(
-          { error: `Tokenization failed on-chain: ${msg}` },
-          { status: 500 },
-        );
-      }
-    }
-
-    // ── Persist to DB ─────────────────────────────────────────────────────────
     const updated = await db.contracts.update(id, {
-      ...(tokenAddress && { tokenAddress }),
       tokenizationExposure: JSON.stringify(exposureSettings),
     });
+
+    console.log(`[tokenize] Contract ${id} marked as investable: ${totalSupply} tokens at $${pricePerToken}/token`);
 
     return Response.json({
       success: true,
       contract: updated,
-      tokenAddress: updated.tokenAddress,
-      poolAddress: poolAddress ?? null,
+      tokenAddress: contract.tokenAddress,
+      totalSupply,
+      pricePerToken,
     });
   } catch (error) {
     console.error("[tokenize] Error:", error);

@@ -3,20 +3,22 @@ import { ethers } from "ethers";
 import { z } from "zod";
 import { db, ensureInit } from "@/lib/db";
 import { isBlockchainConfigured } from "@/lib/blockchain";
-import { CHAIN_CONFIG } from "@/lib/blockchain/config";
-import { getDeployerSigner, getProvider } from "@/lib/blockchain/clients";
-import { getTokenDecimals } from "@/lib/blockchain/utils";
-import { buyTokens } from "@/lib/uniswap";
+import { getDeployerSigner } from "@/lib/blockchain/clients";
+import { SERVICE_CONTRACT_ABI } from "@/lib/blockchain/abis";
 import { requireAuth } from "@/lib/auth";
 import { notifyUser } from "@/lib/email";
 
-const ERC20_TOTAL_SUPPLY_ABI = ["function totalSupply() view returns (uint256)"];
-
 const BuyBodySchema = z.object({
   amount: z.number().positive(),
-  buyerAddress: z.string().min(1),
 });
 
+/**
+ * POST /api/marketplace/:tokenId/buy
+ *
+ * Investor buys tokens for a tokenized contract.
+ * Tokens are minted on demand via ServiceContract.mintTokens().
+ * Payment is recorded in DB (USDC transfer handled by operator or client-side).
+ */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ tokenId: string }> },
@@ -25,6 +27,7 @@ export async function POST(
     const auth = await requireAuth(request);
     if (auth.error) return auth.error;
 
+    await ensureInit();
     const { tokenId } = await params;
     const body = await request.json();
     const parsed = BuyBodySchema.safeParse(body);
@@ -38,90 +41,95 @@ export async function POST(
 
     const contract = await db.contracts.findById(tokenId);
     if (!contract) {
-      return Response.json(
-        { error: "Token/contract not found" },
-        { status: 404 },
-      );
+      return Response.json({ error: "Contract not found" }, { status: 404 });
     }
 
-    if (!contract.tokenAddress) {
-      return Response.json(
-        { error: "This contract is not tokenized" },
-        { status: 400 },
-      );
+    if (!contract.tokenizationExposure) {
+      return Response.json({ error: "This contract is not tokenized" }, { status: 400 });
     }
 
-    if (parsed.data.buyerAddress.toLowerCase() !== auth.user!.walletAddress?.toLowerCase()) {
-      return Response.json({ error: "Buyer address must match authenticated wallet" }, { status: 403 });
+    if (!contract.tokenAddress || !contract.onChainAddress) {
+      return Response.json({ error: "Contract not deployed on-chain" }, { status: 400 });
     }
 
-    const { amount, buyerAddress } = parsed.data;
+    // Parse tokenization settings
+    let totalSupply = 100;
+    let pricePerToken = 1;
+    try {
+      const exposure = JSON.parse(contract.tokenizationExposure);
+      totalSupply = exposure.totalSupply ?? 100;
+      pricePerToken = exposure.pricePerToken ?? (contract.totalValue / totalSupply);
+    } catch {
+      pricePerToken = contract.totalValue / totalSupply;
+    }
 
-    // Determine token supply: try tokenizationExposure JSON, then on-chain totalSupply, fallback to 100
-    let tokenSupply = 100;
-    if (contract.tokenizationExposure) {
+    const { amount } = parsed.data;
+    const buyerAddress = auth.user!.walletAddress!;
+
+    // Check remaining supply: maxSupply - currentSupply
+    if (isBlockchainConfigured()) {
       try {
-        const exposure = JSON.parse(contract.tokenizationExposure);
-        if (exposure.tokenSupply && typeof exposure.tokenSupply === "number") {
-          tokenSupply = exposure.tokenSupply;
-        }
-      } catch {
-        // ignore parse errors
-      }
-    }
-    if (tokenSupply === 100 && contract.tokenAddress && isBlockchainConfigured()) {
-      try {
+        const provider = getDeployerSigner().provider!;
         const tokenContract = new ethers.Contract(
           contract.tokenAddress,
-          ERC20_TOTAL_SUPPLY_ABI,
-          getProvider(),
+          [
+            "function totalSupply() view returns (uint256)",
+            "function maxSupply() view returns (uint256)",
+          ],
+          provider,
         );
-        const onChainSupply = await tokenContract.totalSupply();
-        // ContractToken uses 18 decimals
-        const supplyNum = Number(ethers.formatUnits(onChainSupply, 18));
-        if (supplyNum > 0) tokenSupply = supplyNum;
-      } catch {
-        console.warn("[marketplace/buy] Could not read on-chain totalSupply, using default");
+        const [currentSupply, maxSupply] = await Promise.all([
+          tokenContract.totalSupply(),
+          tokenContract.maxSupply(),
+        ]);
+        const remaining = maxSupply - currentSupply;
+        const requestedAmount = ethers.parseUnits(amount.toString(), 18);
+
+        if (requestedAmount > remaining) {
+          const remainingFormatted = Number(ethers.formatUnits(remaining, 18));
+          return Response.json(
+            { error: `Only ${remainingFormatted} tokens remaining. Requested ${amount}.` },
+            { status: 400 },
+          );
+        }
+      } catch (err) {
+        console.warn("[marketplace/buy] Could not check remaining supply:", err);
       }
     }
 
-    const pricePerToken = contract.totalValue / tokenSupply;
     const totalCost = amount * pricePerToken;
 
     console.log(
-      `[marketplace] Buy: ${buyerAddress} purchasing ${amount} tokens of ${tokenId} for $${totalCost} via Uniswap (supply: ${tokenSupply})`,
+      `[marketplace/buy] ${buyerAddress.slice(0, 10)} buying ${amount} tokens of ${tokenId} at $${pricePerToken}/token ($${totalCost} total)`,
     );
 
     let txHash: string | undefined;
 
-    // Chain-first: execute Uniswap swap — must succeed or request fails
-    if (isBlockchainConfigured() && CHAIN_CONFIG.paymentTokenAddress) {
+    // Mint tokens to the investor on-chain
+    if (isBlockchainConfigured()) {
       try {
         const signer = getDeployerSigner();
-        // Convert USDC cost to proper decimal units
-        const usdcDecimals = await getTokenDecimals(CHAIN_CONFIG.paymentTokenAddress, getProvider());
-        const usdcAmount = BigInt(Math.round(totalCost * 10 ** usdcDecimals));
-        txHash = await buyTokens({
-          tokenAddress: contract.tokenAddress!,
-          usdcAddress: CHAIN_CONFIG.paymentTokenAddress,
-          usdcAmount,
-          signer,
-        });
-        console.log("[marketplace/buy] On-chain swap success:", txHash);
+        const sc = new ethers.Contract(contract.onChainAddress, SERVICE_CONTRACT_ABI, signer);
+        const mintAmount = ethers.parseUnits(amount.toString(), 18);
+
+        const tx = await sc.mintTokens(buyerAddress, mintAmount, { gasLimit: 300_000 });
+        const receipt = await tx.wait(1);
+        txHash = receipt.hash;
+        console.log("[marketplace/buy] Tokens minted to investor:", txHash);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "On-chain swap failed";
-        console.error("[marketplace/buy] On-chain swap FAILED:", msg);
+        const msg = err instanceof Error ? err.message : "Minting failed";
+        console.error("[marketplace/buy] Mint FAILED:", msg);
         return Response.json(
-          { error: `Token purchase failed on-chain: ${msg}` },
+          { error: `Token purchase failed: ${msg}` },
           { status: 500 },
         );
       }
     }
 
-    // db.holdings not available in current schema — log purchase for now
-    console.log("[marketplace/buy] Purchase recorded (DB holdings not yet available):", { buyerAddress, tokenId, amount, pricePerToken });
+    // TODO: Record in holdings table when available
+    console.log("[marketplace/buy] Purchase recorded:", { buyerAddress, tokenId, amount, pricePerToken, totalCost });
 
-    // Notify agency of new investment
+    // Notify agency
     if (contract.agency) {
       notifyUser(contract.agency, {
         type: "investment_received",

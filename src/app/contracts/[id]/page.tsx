@@ -931,7 +931,7 @@ export default function ContractDetailPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-muted font-medium">Network</span>
                     <span className="font-semibold text-foreground">
-                      Arbitrum
+                      Base Sepolia
                     </span>
                   </div>
                   <Link
@@ -947,6 +947,23 @@ export default function ContractDetailPage() {
                     >
                       Buy Tokens on Marketplace
                     </Link>
+                  )}
+                  {userRole === "agency" && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`/api/contracts/${id}/pool`, { method: "POST", headers: { "Content-Type": "application/json", ...(typeof window !== "undefined" && localStorage.getItem("trustsignal_wallet") ? { "X-Wallet-Address": localStorage.getItem("trustsignal_wallet")! } : {}) } });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.error);
+                          alert(data.poolExisted ? "Pool already active!" : "Uniswap pool activated!");
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : "Pool activation failed");
+                        }
+                      }}
+                      className="flex items-center justify-center h-8 rounded-md bg-surface-secondary text-xs font-semibold border border-brand/40 text-brand hover:bg-brand/10 active:scale-[0.98] transition-all"
+                    >
+                      Activate Uniswap Pool (Secondary Market)
+                    </button>
                   )}
                 </CardContent>
               </Card>

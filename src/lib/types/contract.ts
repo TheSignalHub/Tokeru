@@ -101,6 +101,11 @@ export interface TokenizationExposure {
   showDescription: boolean;
   showMilestones: boolean;
   showDisputeHistory: boolean;
+  // Pricing (set at tokenization time)
+  tokenName?: string;
+  tokenSymbol?: string;
+  totalSupply?: number;
+  pricePerToken?: number;
   // title and progress are always shown
   // client info is NEVER shown
 }

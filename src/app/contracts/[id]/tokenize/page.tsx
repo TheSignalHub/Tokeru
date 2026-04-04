@@ -10,7 +10,7 @@ import { Button, Input } from "@heroui/react";
 import { PageHeader, SectionCard } from "@/components/ui";
 import Link from "next/link";
 
-type Step = "form" | "confirm" | "broadcasting" | "success";
+type Step = "form" | "confirm" | "saving" | "success";
 
 export default function TokenizePage() {
   const { id } = useParams<{ id: string }>();
@@ -38,7 +38,7 @@ export default function TokenizePage() {
   const isAgency = contract?.agency?.toLowerCase() === walletAddress?.toLowerCase();
 
   const handleConfirm = async () => {
-    setStep("broadcasting");
+    setStep("saving");
     setError(null);
     try {
       await tokenizeContract(id, {
@@ -47,11 +47,11 @@ export default function TokenizePage() {
         totalSupply,
         pricePerToken,
       });
-      toast.success("Contract tokenized!");
+      toast.success("Contract is now open for investors!");
       setStep("success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Tokenization failed");
-      toast.error(err instanceof Error ? err.message : "Tokenization failed");
+      setError(err instanceof Error ? err.message : "Failed to tokenize");
+      toast.error(err instanceof Error ? err.message : "Failed to tokenize");
       setStep("confirm");
     }
   };
@@ -63,22 +63,28 @@ export default function TokenizePage() {
         <SectionCard className="text-center py-10">
           <CheckCircle className="h-12 w-12 text-success mx-auto mb-4" />
           <p className="text-lg font-bold mb-2">{tokenName || defaultName}</p>
-          <p className="text-sm text-muted mb-4">{totalSupply.toLocaleString()} tokens at ${pricePerToken.toFixed(2)} each</p>
-          <Link href="/marketplace" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground font-medium">
-            View on Marketplace <ExternalLink className="h-4 w-4" />
-          </Link>
+          <p className="text-sm text-muted mb-2">{totalSupply.toLocaleString()} tokens at ${pricePerToken.toFixed(2)} each</p>
+          <p className="text-xs text-muted mb-6">Investors can now purchase tokens. Tokens are minted on demand.</p>
+          <div className="flex gap-3 justify-center">
+            <Link href={`/contracts/${id}`} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border font-medium text-sm">
+              View Contract
+            </Link>
+            <Link href="/marketplace" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground font-medium text-sm">
+              View Marketplace <ExternalLink className="h-4 w-4" />
+            </Link>
+          </div>
         </SectionCard>
       </div>
     );
   }
 
-  if (step === "broadcasting") {
+  if (step === "saving") {
     return (
       <div className="max-w-2xl mx-auto px-4 py-12">
         <PageHeader title="Tokenizing..." backHref={`/contracts/${id}`} backLabel="Back" />
         <SectionCard className="text-center py-12">
           <Loader2 className="h-12 w-12 text-accent animate-spin mx-auto mb-4" />
-          <p className="text-sm text-muted">Creating Uniswap pool and minting tokens...</p>
+          <p className="text-sm text-muted">Setting up token parameters...</p>
         </SectionCard>
       </div>
     );
@@ -108,11 +114,10 @@ export default function TokenizePage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <PageHeader title="Tokenize Contract" description="Create tradeable tokens for investors on Uniswap" backHref={`/contracts/${id}`} backLabel="Back" />
+      <PageHeader title="Tokenize Contract" description="Open this contract for investor participation" backHref={`/contracts/${id}`} backLabel="Back" />
 
       {step === "form" && (
         <>
-          {/* Value overview */}
           <SectionCard title="Contract Value" icon={<Coins className="h-5 w-5 text-brand" />} className="mb-6">
             <div className="grid grid-cols-3 gap-4 mb-6">
               <div className="p-4 rounded-xl bg-surface-secondary text-center">
@@ -129,7 +134,6 @@ export default function TokenizePage() {
               </div>
             </div>
 
-            {/* Discount slider */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-medium">Investor Discount</label>
@@ -138,11 +142,10 @@ export default function TokenizePage() {
               <input type="range" min={1} max={50} value={discountPct} onChange={(e) => setDiscountPct(Number(e.target.value))}
                 className="w-full h-2 rounded-full appearance-none cursor-pointer bg-surface-tertiary accent-accent" />
               <p className="text-xs text-muted mt-2">
-                Investors buy at <strong>${pricePerToken.toFixed(2)}</strong>/token. You receive <strong>${investorCost.toLocaleString()}</strong> upfront.
+                Investors buy at <strong>${pricePerToken.toFixed(2)}</strong>/token. Each token has a face value of $1.00.
               </p>
             </div>
 
-            {/* Token details */}
             <div className="border-t border-border/50 pt-4 grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs text-muted mb-1 block">Token Name</label>
@@ -154,6 +157,14 @@ export default function TokenizePage() {
               </div>
             </div>
           </SectionCard>
+
+          <div className="p-4 rounded-lg bg-surface-secondary border border-border/50 mb-6">
+            <p className="text-xs text-muted">
+              <strong>How it works:</strong> Tokenizing makes your contract available on the marketplace.
+              Investors purchase tokens at the discount you set. Tokens are minted on demand when bought.
+              You can optionally activate a Uniswap V3 pool later for secondary market trading.
+            </p>
+          </div>
 
           <Button onPress={() => setStep("confirm")} fullWidth className="py-4 rounded-xl bg-accent text-accent-foreground font-medium text-lg">
             Review & Tokenize
@@ -170,11 +181,11 @@ export default function TokenizePage() {
                 <span className="font-semibold">{tokenName || defaultName} ({tokenSymbol || defaultSymbol})</span>
               </div>
               <div className="flex justify-between py-2 border-b border-border/50">
-                <span className="text-muted">Supply</span>
+                <span className="text-muted">Max Supply</span>
                 <span className="font-semibold">{totalSupply.toLocaleString()} tokens</span>
               </div>
               <div className="flex justify-between py-2 border-b border-border/50">
-                <span className="text-muted">Price</span>
+                <span className="text-muted">Token Price</span>
                 <span className="font-semibold">${pricePerToken.toFixed(2)} <span className="text-xs text-muted">(face $1.00)</span></span>
               </div>
               <div className="flex justify-between py-2">
@@ -182,7 +193,6 @@ export default function TokenizePage() {
                 <span className="font-semibold text-success">+{investorYieldPct.toFixed(1)}%</span>
               </div>
             </div>
-            <p className="text-xs text-muted mt-4">A Uniswap V3 pool will be created for this token paired with USDC.</p>
           </SectionCard>
 
           {error && (

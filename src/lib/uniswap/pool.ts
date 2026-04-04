@@ -126,36 +126,60 @@ export async function createPool(params: {
   usdcAddress: string;
   initialPrice: number; // price in USDC per token (e.g., 0.90 means 1 token = 0.90 USDC)
   signer: ethers.Signer;
-}): Promise<string> {
+}): Promise<{ address: string; existed: boolean }> {
   const { tokenAddress, usdcAddress, initialPrice, signer } = params;
-  const positionManager = new ethers.Contract(
-    CHAIN_CONFIG.uniswap.positionManager,
-    POSITION_MANAGER_ABI,
-    signer,
-  );
+  const provider = signer.provider!;
 
   // Uniswap requires token0 < token1 (lexicographic by address)
   const [token0, token1] = tokenAddress.toLowerCase() < usdcAddress.toLowerCase()
     ? [tokenAddress, usdcAddress]
     : [usdcAddress, tokenAddress];
 
+  // Check if pool already exists (retry-safe)
+  const factory = new ethers.Contract(CHAIN_CONFIG.uniswap.factory, FACTORY_ABI, provider);
+  const existingPool: string = await factory.getPool(token0, token1, DEFAULT_FEE_TIER);
+
+  if (existingPool && existingPool !== ethers.ZeroAddress) {
+    console.log(`[uniswap] Pool already exists: ${existingPool}, skipping creation`);
+    return { address: existingPool, existed: true };
+  }
+
   // Fetch decimals for both tokens
-  const provider = signer.provider!;
   const token0Contract = new ethers.Contract(token0, ERC20_ABI, provider);
   const token1Contract = new ethers.Contract(token1, ERC20_ABI, provider);
   const [token0Decimals, token1Decimals]: [number, number] = await Promise.all([
     token0Contract.decimals().then(Number).catch(() => 18),
-    token1Contract.decimals().then(Number).catch(() => 6),
+    token1Contract.decimals().then(Number).catch(() => 18),
   ]);
 
   // Price is expressed as token1 per token0
   // If token0 is contractToken: price = USDC per contractToken = initialPrice
   // If token0 is USDC: price = contractToken per USDC = 1 / initialPrice
-  const priceToken0PerToken1 = token0.toLowerCase() === tokenAddress.toLowerCase()
+  const priceToken1PerToken0 = token0.toLowerCase() === tokenAddress.toLowerCase()
     ? initialPrice
     : 1 / initialPrice;
 
-  const sqrtPriceX96 = encodeSqrtPriceX96(priceToken0PerToken1, token0Decimals, token1Decimals);
+  const sqrtPriceX96 = encodeSqrtPriceX96(priceToken1PerToken0, token0Decimals, token1Decimals);
+
+  console.log(`[uniswap] Creating pool: token0=${token0}, token1=${token1}`);
+  console.log(`[uniswap] Decimals: ${token0Decimals}/${token1Decimals}, price=${priceToken1PerToken0}, sqrtPriceX96=${sqrtPriceX96}`);
+
+  const positionManager = new ethers.Contract(
+    CHAIN_CONFIG.uniswap.positionManager,
+    POSITION_MANAGER_ABI,
+    signer,
+  );
+
+  // Simulate first to get revert reason
+  try {
+    await positionManager.createAndInitializePoolIfNecessary.staticCall(
+      token0, token1, DEFAULT_FEE_TIER, sqrtPriceX96,
+    );
+  } catch (simErr) {
+    const reason = simErr instanceof Error ? simErr.message : String(simErr);
+    console.error(`[uniswap] createPool simulation FAILED:`, reason);
+    throw new Error(`Uniswap createPool would revert: ${reason}`);
+  }
 
   const tx = await positionManager.createAndInitializePoolIfNecessary(
     token0,
@@ -166,12 +190,10 @@ export async function createPool(params: {
   );
   const receipt = await tx.wait(1);
 
-  // Extract pool address from return value or fetch from factory
-  const factory = new ethers.Contract(CHAIN_CONFIG.uniswap.factory, FACTORY_ABI, provider);
   const poolAddress: string = await factory.getPool(token0, token1, DEFAULT_FEE_TIER);
 
   console.log(`[uniswap] Pool created: ${poolAddress} (tx: ${receipt.hash})`);
-  return poolAddress;
+  return { address: poolAddress, existed: false };
 }
 
 /**
@@ -198,11 +220,9 @@ export async function addLiquidity(params: {
     ? [tokenAmount, usdcAmount]
     : [usdcAmount, tokenAmount];
 
-  // Approve position manager for both tokens
-  await Promise.all([
-    ensureApproval(tokenAddress, positionManagerAddress, tokenAmount, signer),
-    ensureApproval(usdcAddress, positionManagerAddress, usdcAmount, signer),
-  ]);
+  // Approve position manager for both tokens (sequential to avoid nonce collision)
+  await ensureApproval(tokenAddress, positionManagerAddress, tokenAmount, signer);
+  await ensureApproval(usdcAddress, positionManagerAddress, usdcAmount, signer);
 
   const positionManager = new ethers.Contract(
     positionManagerAddress,
@@ -226,6 +246,31 @@ export async function addLiquidity(params: {
     recipient: recipientAddress,
     deadline,
   };
+
+  // Debug: log balances and allowances before mint
+  const erc20 = ["function balanceOf(address) view returns (uint256)", "function allowance(address,address) view returns (uint256)"];
+  const t0 = new ethers.Contract(token0, erc20, signer);
+  const t1 = new ethers.Contract(token1, erc20, signer);
+  const [bal0, bal1, allow0, allow1] = await Promise.all([
+    t0.balanceOf(recipientAddress),
+    t1.balanceOf(recipientAddress),
+    t0.allowance(recipientAddress, positionManagerAddress),
+    t1.allowance(recipientAddress, positionManagerAddress),
+  ]);
+  console.log(`[uniswap] addLiquidity debug:`);
+  console.log(`  token0: ${token0}, token1: ${token1}`);
+  console.log(`  amount0Desired: ${amount0Desired}, amount1Desired: ${amount1Desired}`);
+  console.log(`  balance0: ${bal0}, balance1: ${bal1}`);
+  console.log(`  allowance0: ${allow0}, allowance1: ${allow1}`);
+
+  // Try staticCall first to get revert reason
+  try {
+    await positionManager.mint.staticCall(mintParams);
+  } catch (simErr) {
+    const reason = simErr instanceof Error ? simErr.message : String(simErr);
+    console.error(`[uniswap] mint simulation FAILED:`, reason);
+    throw new Error(`Uniswap addLiquidity would revert: ${reason}`);
+  }
 
   const tx = await positionManager.mint(mintParams, { gasLimit: 700_000 });
   const receipt = await tx.wait(1);
