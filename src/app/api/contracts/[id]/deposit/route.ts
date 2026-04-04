@@ -4,6 +4,8 @@ import { db, ensureInit } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { validateDeposit, createDepositRecord } from "@/lib/payments/escrow";
 import { depositEscrow, isBlockchainConfigured, createDeal, isFactoryConfigured } from "@/lib/blockchain";
+import { CHAIN_CONFIG } from "@/lib/blockchain/config";
+import { privateDeposit, privateTransfer, isUnlinkConfigured, createUnlinkClient } from "@/lib/privacy";
 
 const DepositSchema = z.object({
   amount: z.number().positive(),
@@ -81,13 +83,60 @@ export async function POST(
       }
     }
 
-    // ── Chain-first: deposit escrow on-chain ──
-    if (contract.onChainAddress && isBlockchainConfigured()) {
+    // ── Deposit escrow ──
+    // If Unlink is configured: client deposits into shielded pool → operator withdraws → deposits on-chain
+    // This hides the client's wallet address from the on-chain transaction.
+    // If Unlink is NOT configured: direct on-chain deposit (client address visible).
+    const depositAmount = BigInt(Math.round(parsed.data.amount * 1e18));
+
+    if (isUnlinkConfigured() && contract.onChainAddress && isBlockchainConfigured()) {
       try {
-        txHash = await depositEscrow(
-          contract.onChainAddress,
-          BigInt(Math.round(parsed.data.amount * 1e18)),
-        );
+        // 1. Get client's Unlink mnemonic
+        const clientUser = await db.users.findRawByAddress(auth.walletAddress);
+        if (!clientUser?.unlinkMnemonic) {
+          throw new Error("Client Unlink wallet not configured. Please set up privacy in your profile.");
+        }
+
+        const paymentToken = CHAIN_CONFIG.paymentTokenAddress;
+        if (!paymentToken) throw new Error("Payment token not configured");
+
+        const amountStr = parsed.data.amount.toString();
+
+        // 2. Client deposits USDC into Unlink shielded pool (hides their address)
+        console.log("[deposit] Private deposit: client → shielded pool...");
+        await privateDeposit(clientUser.unlinkMnemonic, paymentToken, amountStr);
+
+        // 3. Private transfer from client's shielded balance to deployer's shielded balance
+        // The deployer will then deposit into the ServiceContract on behalf of the client
+        console.log("[deposit] Private transfer: shielded pool → operator...");
+        const deployerUnlinkClient = createUnlinkClient(clientUser.unlinkMnemonic);
+        const deployerAddr = await deployerUnlinkClient.getAddress();
+        await privateTransfer(clientUser.unlinkMnemonic, deployerAddr, paymentToken, amountStr);
+
+        // 4. Operator deposits into ServiceContract (client address never appears on-chain)
+        console.log("[deposit] Operator depositing into ServiceContract...");
+        txHash = await depositEscrow(contract.onChainAddress, depositAmount);
+        console.log("[deposit] Private deposit complete:", txHash);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Private deposit failed";
+        console.warn("[deposit] Unlink private deposit failed, falling back to direct:", msg);
+
+        // Fall back to direct deposit if Unlink fails
+        try {
+          txHash = await depositEscrow(contract.onChainAddress, depositAmount);
+          console.log("[deposit] Direct deposit fallback success:", txHash);
+        } catch (directErr) {
+          const directMsg = directErr instanceof Error ? directErr.message : "Deposit failed";
+          return Response.json(
+            { error: `Deposit failed: ${directMsg}` },
+            { status: 500 },
+          );
+        }
+      }
+    } else if (contract.onChainAddress && isBlockchainConfigured()) {
+      // Direct on-chain deposit (no Unlink — client address visible)
+      try {
+        txHash = await depositEscrow(contract.onChainAddress, depositAmount);
         console.log("[deposit] On-chain success:", txHash);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "On-chain deposit failed";
