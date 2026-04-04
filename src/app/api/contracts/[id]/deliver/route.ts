@@ -4,7 +4,7 @@ import { extractText } from "unpdf";
 import { db, ensureInit } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { submitDeliverable, isBlockchainConfigured } from "@/lib/blockchain";
-import { notifyUser } from "@/lib/email";
+import { notify } from "@/lib/notifications";
 import { uploadFile } from "@/lib/storage";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB per file
@@ -205,8 +205,10 @@ export async function POST(
     // Notify client that a deliverable was submitted
     const milestone = updated.milestones.find((m) => m.id === milestoneId);
     if (contract.client) {
-      notifyUser(contract.client, {
+      notify(contract.client, {
         type: "deliverable_submitted",
+        title: "Deliverable submitted",
+        message: `A deliverable for "${milestone?.name ?? "a milestone"}" on "${contract.title}" needs your review.`,
         contractTitle: contract.title,
         contractId: id,
         milestoneName: milestone?.name,

@@ -151,6 +151,22 @@ export async function ensureTables() {
 
   
 
+  // Notifications table
+  await getDb().execute(sql`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id SERIAL PRIMARY KEY,
+      user_address TEXT NOT NULL,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      contract_id TEXT,
+      read BOOLEAN NOT NULL DEFAULT false,
+      created_at TEXT NOT NULL
+    )
+  `);
+
+  await getDb().execute(sql`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_address)`);
+
   // Team members table
   await getDb().execute(sql`
     CREATE TABLE IF NOT EXISTS team_members (

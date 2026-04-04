@@ -144,6 +144,21 @@ export const investorHoldings = pgTable("investor_holdings", {
   purchasedAt: text("purchased_at"),
 });
 
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userAddress: text("user_address").notNull(),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  contractId: text("contract_id"),
+  read: boolean("read").notNull().default(false),
+  createdAt: text("created_at").notNull(),
+});
+
 export const escrows = pgTable("escrows", {
   contractId: text("contract_id").primaryKey(),
   totalAmount: real("total_amount").notNull(),

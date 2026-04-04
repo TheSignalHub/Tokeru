@@ -7,9 +7,6 @@ import {
   Store,
   FileText,
   TrendingUp,
-  Clock,
-  Settings,
-  HelpCircle,
   PlusCircle,
   LogOut,
   Loader2,
@@ -26,12 +23,10 @@ const mainNav = [
   { href: "/marketplace", label: "Marketplace", icon: Store },
   { href: "/contracts", label: "Contracts", icon: FileText },
   { href: "/portfolio", label: "Portfolio", icon: TrendingUp },
-  { href: "/activity", label: "Activity", icon: Clock },
 ];
 
 const bottomNav = [
-  { href: "/profile", label: "Settings", icon: Settings },
-  { href: "/help", label: "Help", icon: HelpCircle },
+  { href: "/profile", label: "Account", icon: User },
 ];
 
 function isActive(pathname: string, href: string) {

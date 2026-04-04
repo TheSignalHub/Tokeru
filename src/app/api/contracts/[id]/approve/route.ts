@@ -6,7 +6,7 @@ import { calculateMilestoneRelease } from "@/lib/payments/escrow";
 import { approveMilestone, isBlockchainConfigured } from "@/lib/blockchain";
 import { getTokenDecimals } from "@/lib/blockchain/utils";
 import { getProvider } from "@/lib/blockchain/clients";
-import { notifyUser } from "@/lib/email";
+import { notify } from "@/lib/notifications";
 import { privateTransfer, isUnlinkConfigured } from "@/lib/privacy";
 import { computeAgencyScore } from "@/lib/scoring";
 import { agencyProfile as agencyProfileChain } from "@/lib/blockchain";
@@ -179,8 +179,10 @@ export async function POST(
 
     // Notify agency that milestone was approved
     if (contract.agency) {
-      notifyUser(contract.agency, {
+      notify(contract.agency, {
         type: "milestone_approved",
+        title: "Milestone approved",
+        message: `Milestone "${milestone.name}" on "${contract.title}" has been approved.`,
         contractTitle: contract.title,
         contractId: id,
         milestoneName: milestone.name,
@@ -191,11 +193,13 @@ export async function POST(
     if (allApproved) {
       const completedNotif = {
         type: "contract_completed" as const,
+        title: "Contract completed",
+        message: `All milestones on "${contract.title}" have been approved. The contract is complete.`,
         contractTitle: contract.title,
         contractId: id,
       };
-      if (contract.agency) notifyUser(contract.agency, completedNotif);
-      if (contract.client) notifyUser(contract.client, completedNotif);
+      if (contract.agency) notify(contract.agency, completedNotif);
+      if (contract.client) notify(contract.client, completedNotif);
     }
 
     return Response.json({

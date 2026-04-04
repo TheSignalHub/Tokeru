@@ -26,7 +26,7 @@ export function getGlobalWallet(): string | null {
   return localStorage.getItem(WALLET_KEY);
 }
 
-function buildHeaders(): Record<string, string> {
+export function buildHeaders(): Record<string, string> {
   const headers: Record<string, string> = {};
   if (typeof window === "undefined") return headers;
   const token = localStorage.getItem(TOKEN_KEY);

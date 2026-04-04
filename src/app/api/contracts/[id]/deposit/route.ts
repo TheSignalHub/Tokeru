@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { validateDeposit, createDepositRecord } from "@/lib/payments/escrow";
 import { depositEscrow, isBlockchainConfigured, createDeal, isFactoryConfigured } from "@/lib/blockchain";
 import { CHAIN_CONFIG } from "@/lib/blockchain/config";
+import { notify } from "@/lib/notifications";
 import { privateDeposit, privateTransfer, isUnlinkConfigured, createUnlinkClient } from "@/lib/privacy";
 
 const DepositSchema = z.object({
@@ -154,6 +155,18 @@ export async function POST(
 
     if (updatedEscrow.depositedAmount >= updatedEscrow.totalAmount) {
       await db.contracts.update(id, { status: "active" });
+
+      // Notify agency that escrow is deposited and contract is active
+      if (contract.agency) {
+        notify(contract.agency, {
+          type: "escrow_deposited",
+          title: "Escrow deposited",
+          message: `The client has deposited $${parsed.data.amount.toLocaleString()} into escrow for "${contract.title}". The contract is now active.`,
+          contractTitle: contract.title,
+          contractId: id,
+          amount: parsed.data.amount,
+        });
+      }
     }
 
     return Response.json({ ...updatedEscrow, txHash });

@@ -6,7 +6,7 @@ import { isBlockchainConfigured } from "@/lib/blockchain";
 import { getDeployerSigner } from "@/lib/blockchain/clients";
 import { SERVICE_CONTRACT_ABI } from "@/lib/blockchain/abis";
 import { requireAuth } from "@/lib/auth";
-import { notifyUser } from "@/lib/email";
+import { notify } from "@/lib/notifications";
 
 const BuyBodySchema = z.object({
   amount: z.number().positive(),
@@ -134,13 +134,16 @@ export async function POST(
 
     // Notify agency
     if (contract.agency) {
-      notifyUser(contract.agency, {
+      const investorLabel = `${buyerAddress.slice(0, 6)}...${buyerAddress.slice(-4)}`;
+      notify(contract.agency, {
         type: "investment_received",
+        title: "Investment received",
+        message: `${investorLabel} purchased ${amount.toLocaleString()} tokens ($${totalCost.toLocaleString()}) for "${contract.title}".`,
         contractTitle: contract.title,
         contractId: tokenId,
         tokenAmount: amount,
         amount: totalCost,
-        investorName: `${buyerAddress.slice(0, 6)}...${buyerAddress.slice(-4)}`,
+        investorName: investorLabel,
       });
     }
 
