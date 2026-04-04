@@ -2,8 +2,10 @@ import { type NextRequest } from "next/server";
 import { z } from "zod";
 import { db, ensureInit } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
-import { isBlockchainConfigured, refundMilestone } from "@/lib/blockchain";
+import { isBlockchainConfigured, refundMilestone, agencyProfile as agencyProfileChain } from "@/lib/blockchain";
 import { notifyUser } from "@/lib/email";
+import { computeAgencyScore } from "@/lib/scoring";
+import { uploadFile } from "@/lib/storage";
 
 // --- Zod schemas for each action ---
 
@@ -293,6 +295,33 @@ async function handleCheckDeadline(
       }
     }
 
+    // Update agency score based on dispute outcome
+    if (freshContract) {
+      try {
+        const agencyWon = result.defaultWinner === "agency";
+        const agencyUser = await db.users.findByAddress(freshContract.agency);
+        const profile = agencyUser?.agencyProfile;
+        const updatedDisputesWon = (profile?.disputesWon ?? 0) + (agencyWon ? 1 : 0);
+        const updatedDisputesLost = (profile?.disputesLost ?? 0) + (agencyWon ? 0 : 1);
+        const newScore = computeAgencyScore({
+          contractsCompleted: profile?.contractsCompleted ?? 0,
+          contractsFailed: profile?.contractsFailed ?? 0,
+          disputesWon: updatedDisputesWon,
+          disputesLost: updatedDisputesLost,
+          avgAiScore: 0,
+        });
+        await db.users.updateAgencyScore(freshContract.agency, {
+          disputesWon: updatedDisputesWon,
+          disputesLost: updatedDisputesLost,
+          score: newScore,
+        });
+        // Best-effort on-chain update
+        agencyProfileChain.recordDisputeResult(freshContract.agency, agencyWon, newScore);
+      } catch (scoreErr) {
+        console.error("[dispute] Agency score update failed:", scoreErr);
+      }
+    }
+
     // Notify both parties of the default ruling
     if (freshContract) {
       const defaultNotif = {
@@ -328,10 +357,44 @@ async function handleSubmitEvidence(
     );
   }
 
+  let evidenceUri = data.evidenceUri;
+
+  // If the evidenceUri looks like base64 file data, upload it to storage
+  if (data.evidenceUri.startsWith("data:")) {
+    try {
+      const match = data.evidenceUri.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        const contentType = match[1];
+        const buffer = Buffer.from(match[2], "base64");
+        const filename = `evidence-${data.disputeId}-${Date.now()}`;
+        const storageResult = await uploadFile(buffer, filename, contentType);
+        evidenceUri = storageResult.url;
+
+        // Store as document record
+        await db.documents.createDocument({
+          id: crypto.randomUUID(),
+          contractId: dispute.contractId,
+          milestoneId: dispute.milestoneId,
+          type: "evidence",
+          filename,
+          contentType,
+          contentHash: storageResult.contentHash,
+          ipfsHash: storageResult.ipfsHash,
+          blobUrl: storageResult.blobUrl,
+          url: storageResult.url,
+          size: storageResult.size,
+        });
+      }
+    } catch (err) {
+      console.error("[dispute] Evidence file upload failed:", err);
+      // Continue with original URI — don't block evidence submission
+    }
+  }
+
   const updatedDispute = await db.disputes.addEvidence(data.disputeId, {
     party: callerRole,
     type: "document",
-    uri: data.evidenceUri,
+    uri: evidenceUri,
     description: data.description,
     submittedAt: new Date(),
   });

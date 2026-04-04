@@ -100,6 +100,24 @@ export async function ensureTables() {
   `);
 
   await getDb().execute(sql`
+    CREATE TABLE IF NOT EXISTS documents (
+      id TEXT PRIMARY KEY,
+      contract_id TEXT NOT NULL,
+      milestone_id INTEGER,
+      type TEXT NOT NULL,
+      filename TEXT,
+      content_type TEXT,
+      content_hash TEXT NOT NULL,
+      ipfs_hash TEXT,
+      blob_url TEXT,
+      url TEXT NOT NULL,
+      size INTEGER,
+      extracted_text TEXT,
+      created_at TEXT NOT NULL
+    )
+  `);
+
+  await getDb().execute(sql`
     CREATE TABLE IF NOT EXISTS escrows (
       contract_id TEXT PRIMARY KEY,
       total_amount REAL NOT NULL,
@@ -160,4 +178,6 @@ export async function ensureTables() {
   // Indexes
   await getDb().execute(sql`CREATE INDEX IF NOT EXISTS idx_milestones_contract ON milestones(contract_id)`);
   await getDb().execute(sql`CREATE INDEX IF NOT EXISTS idx_disputes_contract ON disputes(contract_id)`);
+  await getDb().execute(sql`CREATE INDEX IF NOT EXISTS idx_documents_contract ON documents(contract_id)`);
+  await getDb().execute(sql`CREATE INDEX IF NOT EXISTS idx_documents_hash ON documents(content_hash)`);
 }

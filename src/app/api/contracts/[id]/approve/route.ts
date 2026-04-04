@@ -8,6 +8,8 @@ import { getTokenDecimals } from "@/lib/blockchain/utils";
 import { getProvider } from "@/lib/blockchain/clients";
 import { notifyUser } from "@/lib/email";
 import { privateTransfer, isUnlinkConfigured } from "@/lib/privacy";
+import { computeAgencyScore } from "@/lib/scoring";
+import { agencyProfile as agencyProfileChain } from "@/lib/blockchain";
 
 // USDC on Base Sepolia
 const PAYMENT_TOKEN = process.env.PAYMENT_TOKEN_ADDRESS || "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
@@ -149,6 +151,30 @@ export async function POST(
     );
     if (allApproved) {
       await db.contracts.update(id, { status: "completed" });
+
+      // Update agency score on contract completion
+      try {
+        const agencyUser = await db.users.findByAddress(contract.agency);
+        const profile = agencyUser?.agencyProfile;
+        const updatedCompleted = (profile?.contractsCompleted ?? 0) + 1;
+        const updatedVolume = (profile?.totalVolume ?? 0) + contract.totalValue;
+        const newScore = computeAgencyScore({
+          contractsCompleted: updatedCompleted,
+          contractsFailed: profile?.contractsFailed ?? 0,
+          disputesWon: profile?.disputesWon ?? 0,
+          disputesLost: profile?.disputesLost ?? 0,
+          avgAiScore: 0,
+        });
+        await db.users.updateAgencyScore(contract.agency, {
+          contractsCompleted: updatedCompleted,
+          totalVolume: updatedVolume,
+          score: newScore,
+        });
+        // Best-effort on-chain update
+        agencyProfileChain.recordCompletion(contract.agency, contract.totalValue, newScore);
+      } catch (scoreErr) {
+        console.error("[approve] Agency score update failed:", scoreErr);
+      }
     }
 
     // Notify agency that milestone was approved

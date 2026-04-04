@@ -4,6 +4,7 @@ pragma solidity 0.8.24;
 import {Script, console} from "forge-std/Script.sol";
 import {ContractFactory} from "../src/ContractFactory.sol";
 import {ContractToken} from "../src/ContractToken.sol";
+import {AgencyProfile} from "../src/AgencyProfile.sol";
 
 /// @title Deploy
 /// @notice Deploys ContractFactory + test USDC to any EVM chain.
@@ -39,17 +40,24 @@ contract Deploy is Script {
         console.log("Deploying ContractFactory...");
         vm.startBroadcast(deployerKey);
         ContractFactory factory = new ContractFactory(treasury, paymentToken);
+
+        // Deploy AgencyProfile
+        console.log("");
+        console.log("Deploying AgencyProfile...");
+        AgencyProfile agencyProfile = new AgencyProfile();
         vm.stopBroadcast();
 
         console.log("");
         console.log("=== Deployed ===");
         console.log("  ContractFactory:", address(factory));
+        console.log("  AgencyProfile: ", address(agencyProfile));
         console.log("  Payment Token: ", paymentToken);
         console.log("  Treasury:      ", treasury);
         console.log("");
         console.log("Add to .env.local:");
         console.log("  CONTRACT_FACTORY_ADDRESS=%s", vm.toString(address(factory)));
         console.log("  PAYMENT_TOKEN_ADDRESS=%s", vm.toString(paymentToken));
+        console.log("  AGENCY_PROFILE_ADDRESS=%s", vm.toString(address(agencyProfile)));
     }
 
     function deployTestToken() external {

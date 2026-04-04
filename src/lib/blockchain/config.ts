@@ -53,6 +53,7 @@ export const CHAIN_CONFIG = {
   factoryAddress: process.env.CONTRACT_FACTORY_ADDRESS || "",
   serviceContractAddress: process.env.SERVICE_CONTRACT_ADDRESS || "",
   paymentTokenAddress: process.env.PAYMENT_TOKEN_ADDRESS || "",
+  agencyProfileAddress: process.env.AGENCY_PROFILE_ADDRESS || "",
 
   // Uniswap V3 (same on Base Sepolia + local fork)
   uniswap: {

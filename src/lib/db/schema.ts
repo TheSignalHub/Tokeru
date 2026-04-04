@@ -109,6 +109,30 @@ export const disputes = pgTable("disputes", {
 // Escrows
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Documents (file storage records)
+// ---------------------------------------------------------------------------
+
+export const documents = pgTable("documents", {
+  id: text("id").primaryKey(),
+  contractId: text("contract_id").notNull(),
+  milestoneId: integer("milestone_id"),
+  type: text("type").notNull(), // "contract_terms" | "deliverable" | "evidence"
+  filename: text("filename"),
+  contentType: text("content_type"),
+  contentHash: text("content_hash").notNull(),
+  ipfsHash: text("ipfs_hash"),
+  blobUrl: text("blob_url"),
+  url: text("url").notNull(),
+  size: integer("size"),
+  extractedText: text("extracted_text"),
+  createdAt: text("created_at").notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// Escrows
+// ---------------------------------------------------------------------------
+
 export const escrows = pgTable("escrows", {
   contractId: text("contract_id").primaryKey(),
   totalAmount: real("total_amount").notNull(),

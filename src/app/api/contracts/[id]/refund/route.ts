@@ -1,8 +1,9 @@
 import { type NextRequest } from "next/server";
 import { db, ensureInit } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
-import { markContractFailed, refundEscrow as refundEscrowOnChain, isBlockchainConfigured } from "@/lib/blockchain";
+import { markContractFailed, refundEscrow as refundEscrowOnChain, isBlockchainConfigured, agencyProfile as agencyProfileChain } from "@/lib/blockchain";
 import { notifyUser } from "@/lib/email";
+import { computeAgencyScore } from "@/lib/scoring";
 
 export async function POST(
   request: NextRequest,
@@ -84,6 +85,28 @@ export async function POST(
 
     // Execute refund in DB only after chain succeeds
     await db.escrows.refund(id);
+
+    // Update agency score on contract failure
+    try {
+      const agencyUser = await db.users.findByAddress(contract.agency);
+      const profile = agencyUser?.agencyProfile;
+      const updatedFailed = (profile?.contractsFailed ?? 0) + 1;
+      const newScore = computeAgencyScore({
+        contractsCompleted: profile?.contractsCompleted ?? 0,
+        contractsFailed: updatedFailed,
+        disputesWon: profile?.disputesWon ?? 0,
+        disputesLost: profile?.disputesLost ?? 0,
+        avgAiScore: 0,
+      });
+      await db.users.updateAgencyScore(contract.agency, {
+        contractsFailed: updatedFailed,
+        score: newScore,
+      });
+      // Best-effort on-chain update
+      agencyProfileChain.recordFailure(contract.agency, newScore);
+    } catch (scoreErr) {
+      console.error("[refund] Agency score update failed:", scoreErr);
+    }
 
     const updated = await db.contracts.findById(id);
     const escrow = await db.escrows.findByContract(id);

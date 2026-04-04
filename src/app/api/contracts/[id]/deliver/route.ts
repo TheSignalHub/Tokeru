@@ -5,6 +5,7 @@ import { db, ensureInit } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { submitDeliverable, isBlockchainConfigured } from "@/lib/blockchain";
 import { notifyUser } from "@/lib/email";
+import { uploadFile } from "@/lib/storage";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB per file
 
@@ -139,21 +140,66 @@ export async function POST(
       fileContents.push({ filename: file.name, mimeType: extracted.mimeType, text: extracted.text });
     }
 
-    // Store deliverable content in DB for dispute evidence
+    // Upload files to storage and create document records
+    let realProofHash = proofHash;
+    for (let i = 0; i < uploadedFiles.length; i++) {
+      const file = uploadedFiles[i];
+      const fc = fileContents[i];
+      const buffer = Buffer.from(await file.arrayBuffer());
+
+      const storageResult = await uploadFile(buffer, file.name, fc.mimeType);
+
+      // Use the first file's content hash as the real proof hash
+      if (i === 0) {
+        realProofHash = storageResult.contentHash;
+      }
+
+      await db.documents.createDocument({
+        id: crypto.randomUUID(),
+        contractId: id,
+        milestoneId,
+        type: "deliverable",
+        filename: file.name,
+        contentType: fc.mimeType,
+        contentHash: storageResult.contentHash,
+        ipfsHash: storageResult.ipfsHash,
+        blobUrl: storageResult.blobUrl,
+        url: storageResult.url,
+        size: storageResult.size,
+        extractedText: fc.text.trim() || undefined,
+      });
+    }
+
+    // Update milestone with the real content hash if files were uploaded
+    if (uploadedFiles.length > 0 && realProofHash !== proofHash) {
+      await db.contracts.updateMilestone(id, milestoneId, {
+        proofHash: realProofHash,
+      });
+    }
+
+    // Store deliverable text content as a document record
     const textContent = [
       description || "",
       ...(links || []).map((l: string) => `Link: ${l}`),
     ].filter(Boolean).join("\n\n");
 
     if (textContent) {
-      // Document storage is optional — db.documents not available in current schema
-      console.log("[deliver/POST] Deliverable text stored (DB documents not yet available):", textContent.slice(0, 80));
-    }
-
-    // Log file content for now — db.documents not available in current schema
-    for (const fc of fileContents) {
-      if (!fc.text.trim()) continue;
-      console.log(`[deliver/POST] File extracted (${fc.filename}):`, fc.text.slice(0, 80));
+      const textBuffer = Buffer.from(textContent, "utf-8");
+      const textStorageResult = await uploadFile(textBuffer, `milestone-${milestoneId}-description.txt`, "text/plain");
+      await db.documents.createDocument({
+        id: crypto.randomUUID(),
+        contractId: id,
+        milestoneId,
+        type: "deliverable",
+        filename: `milestone-${milestoneId}-description.txt`,
+        contentType: "text/plain",
+        contentHash: textStorageResult.contentHash,
+        url: textStorageResult.url,
+        ipfsHash: textStorageResult.ipfsHash,
+        blobUrl: textStorageResult.blobUrl,
+        size: textStorageResult.size,
+        extractedText: textContent,
+      });
     }
 
     // Notify client that a deliverable was submitted
