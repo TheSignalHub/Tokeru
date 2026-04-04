@@ -601,7 +601,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!walletAddress) return;
     let cancelled = false;
-    const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || "https://sepolia-rollup.arbitrum.io/rpc";
+    const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || "https://sepolia.base.org";
     fetch(rpcUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

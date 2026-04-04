@@ -20,3 +20,9 @@ export function getAgencyTier(score: number): string {
   if (score >= 31) return "Growing";
   return "Seedling";
 }
+
+export function getRiskTier(score: number): { label: string; level: "low" | "medium" | "high" } {
+  if (score >= 80) return { label: "Low Risk", level: "low" };
+  if (score >= 50) return { label: "Medium Risk", level: "medium" };
+  return { label: "High Risk", level: "high" };
+}

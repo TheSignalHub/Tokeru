@@ -143,7 +143,7 @@ export default function TokenizePage() {
               </div>
               <div className="p-4 rounded-xl bg-surface-secondary text-center">
                 <p className="text-2xl font-bold text-success">+{investorYieldPct.toFixed(1)}%</p>
-                <p className="text-xs text-muted mt-1">Investor Yield</p>
+                <p className="text-xs text-muted mt-1">Expected Return</p>
               </div>
             </div>
 
@@ -225,7 +225,7 @@ export default function TokenizePage() {
                 <span className="font-semibold">${pricePerToken.toFixed(2)} <span className="text-xs text-muted">(face $1.00)</span></span>
               </div>
               <div className="flex justify-between py-2 border-b border-border/50">
-                <span className="text-muted">Investor Yield</span>
+                <span className="text-muted">Expected Return</span>
                 <span className="font-semibold text-success">+{investorYieldPct.toFixed(1)}%</span>
               </div>
               <div className="flex justify-between py-2">

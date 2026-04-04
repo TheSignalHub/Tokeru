@@ -1374,7 +1374,7 @@ export default function NewContractPage() {
                           Smart Escrow (Crypto)
                         </div>
                         <div className="text-xs text-muted">
-                          Funds secured on Arbitrum via Privy wallet
+                          Funds secured on Base Sepolia via Privy wallet
                         </div>
                       </div>
                     </div>
@@ -1413,7 +1413,7 @@ export default function NewContractPage() {
                       Review & Deploy
                     </h2>
                     <p className="text-sm text-muted">
-                      Confirm everything before deploying to Arbitrum.
+                      Confirm everything before deploying to Base Sepolia.
                     </p>
                   </div>
 
@@ -1558,7 +1558,7 @@ export default function NewContractPage() {
                     <p className="text-xs text-muted leading-relaxed">
                       This contract will be deployed to{" "}
                       <span className="font-semibold text-foreground">
-                        Arbitrum
+                        Base Sepolia
                       </span>
                       . Only authorized parties can access contract details.
                     </p>
@@ -1600,7 +1600,7 @@ export default function NewContractPage() {
                       ) : (
                         <>
                           <Rocket className="h-4 w-4 mr-2" />
-                          Deploy to Arbitrum
+                          Deploy to Base Sepolia
                         </>
                       )}
                     </Button>

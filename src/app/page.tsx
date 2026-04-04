@@ -58,7 +58,7 @@ const steps = [
     icon: CheckCircle,
     title: "Deliver & Earn",
     description:
-      "Agency delivers work. Client approves milestones. Escrow releases, investors earn yield. Reputation updates on-chain.",
+      "Agency delivers work. Client approves milestones. Escrow releases, investors earn returns. Reputation updates on-chain.",
   },
 ];
 
@@ -73,7 +73,7 @@ const features = [
     icon: Coins,
     title: "Contract Tokenization",
     description:
-      "Agencies mint ERC20 tokens backed by contract value. Investors can buy in and earn yield on delivery.",
+      "Agencies mint ERC20 tokens backed by contract value. Investors can buy in and earn returns when milestones complete.",
   },
   {
     icon: Scale,
@@ -113,7 +113,7 @@ const roles = [
     title: "Investor",
     color: "success",
     description:
-      "You fund service work and earn yield. Browse available contract tokens, assess scores, and buy tokens.",
+      "You fund service work and earn returns when milestones complete. Browse available contract tokens, assess scores, and buy tokens.",
     cta: "Browse Marketplace",
     href: "/marketplace",
   },

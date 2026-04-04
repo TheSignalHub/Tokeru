@@ -284,7 +284,7 @@ export default function DeliverPage() {
       </Button>
 
       <p className="text-xs text-muted text-center mt-3">
-        Files will be uploaded to IPFS. Proof hash recorded on Arbitrum.
+        Files will be uploaded to IPFS. Proof hash recorded on Base Sepolia.
       </p>
     </div>
   );

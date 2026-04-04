@@ -2,28 +2,32 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { ArrowUpDown, SlidersHorizontal, Store } from "lucide-react";
+import { ArrowUpDown, SlidersHorizontal, Store, CheckCircle } from "lucide-react";
 import { useMarketplace, type MarketplaceListing } from "@/hooks/use-marketplace";
 import { Card, CardContent, Button, Chip, Spinner, SearchField, Select, SelectTrigger, SelectValue, SelectIndicator, SelectPopover, ListBox } from "@heroui/react";
 import { motion } from "framer-motion";
-import { truncateMiddle, formatCurrency } from "@/lib/utils/format";
+import { formatCurrency } from "@/lib/utils/format";
 import { ScoreBadge } from "@/components/ui/score-badge";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { RiskTierBadge } from "@/components/ui/risk-tier-badge";
+import { ExpectedReturnBadge } from "@/components/ui/expected-return-badge";
 import { LabeledProgress } from "@/components/ui/labeled-progress";
 import { EmptyState } from "@/components/ui/empty-state";
+import { getRiskTier } from "@/lib/scoring";
 
 // ─── Local display type ──────────────────────────────────────────────────────
 type ActiveListing = {
   id: string;
   title: string;
   category: string;
-  agency: string;
-  agencyAddress: string;
+  agencyName: string;
+  agencyVerified: boolean;
+  agencyScore: number | null;
   score: number;
-  aiStatus: "Verified" | "Pending";
   value: string;
   tokenPrice: string;
-  tokensAvailable: number;
+  pricePerToken: number;
+  completedMilestones: number;
+  totalMilestones: number;
   progress: number;
 };
 
@@ -38,16 +42,24 @@ const SCORE_FILTERS = [
   { label: "Score: 90+", min: 90 },
 ];
 
+const RISK_FILTERS = [
+  { label: "All Risk", value: "all" },
+  { label: "Low Risk", value: "low" },
+  { label: "Medium Risk", value: "medium" },
+  { label: "High Risk", value: "high" },
+];
+
 // ─── Sort ───────────────────────────────────────────────────────────────────
-type SortOption = "default" | "score" | "value" | "progress";
-const SORT_CYCLE: SortOption[] = ["default", "score", "value", "progress"];
-const SORT_LABELS: Record<SortOption, string> = { default: "Sort", score: "Score", value: "Value", progress: "Progress" };
+type SortOption = "default" | "score" | "value" | "progress" | "return";
+const SORT_CYCLE: SortOption[] = ["default", "score", "value", "progress", "return"];
+const SORT_LABELS: Record<SortOption, string> = { default: "Sort", score: "Score", value: "Value", progress: "Progress", return: "Return" };
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function MarketplacePage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All Categories");
   const [minScore, setMinScore] = useState(0);
+  const [riskFilter, setRiskFilter] = useState("all");
   const [sortBy, setSortBy] = useState<SortOption>("default");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 6;
@@ -57,18 +69,19 @@ export default function MarketplacePage() {
   const activeData = useMemo<ActiveListing[]>(() => {
     return listings.map((c: MarketplaceListing): ActiveListing => {
       const price = c.pricePerToken ?? 1;
-      const supply = c.totalSupply ?? c.totalValue;
       return {
         id: c.tokenId,
         title: c.title,
         category: c.category.charAt(0).toUpperCase() + c.category.slice(1),
-        agency: c.agency.name ?? truncateMiddle(c.agency.address, 6, 4),
-        agencyAddress: c.agency.address,
+        agencyName: c.agency.name ?? "Unknown Agency",
+        agencyVerified: c.agency.verified,
+        agencyScore: c.agency.score,
         score: c.avgScore ?? 0,
-        aiStatus: c.status === "active" ? "Verified" : "Pending",
         value: formatCurrency(c.totalValue),
         tokenPrice: formatCurrency(price, "$"),
-        tokensAvailable: supply,
+        pricePerToken: price,
+        completedMilestones: c.completedMilestones,
+        totalMilestones: c.totalMilestones,
         progress: Math.round((c.completedMilestones / Math.max(c.totalMilestones, 1)) * 100),
       };
     });
@@ -79,14 +92,16 @@ export default function MarketplacePage() {
     const result = activeData.filter((c) => {
       if (category !== "All Categories" && c.category !== category) return false;
       if (c.score < minScore) return false;
-      if (q && !c.title.toLowerCase().includes(q) && !c.agency.toLowerCase().includes(q)) return false;
+      if (riskFilter !== "all" && getRiskTier(c.agencyScore ?? 0).level !== riskFilter) return false;
+      if (q && !c.title.toLowerCase().includes(q) && !c.agencyName.toLowerCase().includes(q)) return false;
       return true;
     });
     if (sortBy === "score") result.sort((a, b) => b.score - a.score);
     else if (sortBy === "value") result.sort((a, b) => parseFloat(b.value.replace(/[$,]/g, "")) - parseFloat(a.value.replace(/[$,]/g, "")));
     else if (sortBy === "progress") result.sort((a, b) => b.progress - a.progress);
+    else if (sortBy === "return") result.sort((a, b) => ((1 / a.pricePerToken) - 1) - ((1 / b.pricePerToken) - 1)).reverse();
     return result;
-  }, [search, category, minScore, sortBy, activeData]);
+  }, [search, category, minScore, riskFilter, sortBy, activeData]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -160,6 +175,25 @@ export default function MarketplacePage() {
           </SelectPopover>
         </Select>
 
+        {/* Risk Tier */}
+        <Select
+          aria-label="Risk tier"
+          selectedKey={riskFilter}
+          onSelectionChange={(key) => { setRiskFilter(key as string); setPage(1); }}
+        >
+          <SelectTrigger className="bg-surface-secondary border border-border text-foreground text-sm rounded-lg px-3 py-2 outline-none hover:border-accent/50 focus:border-accent transition-colors min-w-[140px] flex items-center justify-between gap-2">
+            <SelectValue />
+            <SelectIndicator />
+          </SelectTrigger>
+          <SelectPopover className="bg-surface border border-border rounded-lg shadow-lg">
+            <ListBox className="p-1 outline-none">
+              {RISK_FILTERS.map((f) => (
+                <ListBox.Item key={f.value} id={f.value} className="px-3 py-2 text-sm rounded cursor-pointer hover:bg-surface-secondary outline-none focus:bg-surface-secondary selected:bg-accent/10 selected:text-accent">{f.label}</ListBox.Item>
+              ))}
+            </ListBox>
+          </SelectPopover>
+        </Select>
+
         <Button
           variant="secondary"
           className="shrink-0 gap-2"
@@ -209,25 +243,24 @@ export default function MarketplacePage() {
                           {/* Top row */}
                           <div className="flex items-start justify-between gap-2">
                             <Chip size="sm" variant="soft" className="text-xs font-semibold shrink-0">{c.category}</Chip>
-                            <StatusBadge status={c.aiStatus === "Verified" ? "approved" : "pending"} />
+                            <RiskTierBadge score={c.agencyScore} />
                           </div>
 
-                          {/* Title */}
+                          {/* Title + agency */}
                           <div>
                             <h3 className="font-bold text-base leading-snug line-clamp-2 group-hover:text-accent transition-colors">{c.title}</h3>
-                            <p className="text-xs text-muted mt-1 truncate">
-                              by <span className="font-semibold text-foreground">{c.agency}</span>
-                              {c.agencyAddress && (
-                                <span className="ml-1 font-mono text-muted/60">{truncateMiddle(c.agencyAddress, 4, 4)}</span>
-                              )}
+                            <p className="text-xs text-muted mt-1 truncate flex items-center gap-1">
+                              by <span className="font-semibold text-foreground">{c.agencyName}</span>
+                              {c.agencyVerified && <CheckCircle className="h-3 w-3 text-success shrink-0" />}
                             </p>
                           </div>
 
-                          {/* Score + value */}
+                          {/* Score + value + return */}
                           <div className="flex items-center gap-2">
                             <ScoreBadge score={c.score} />
                             <span className="text-muted text-xs">·</span>
                             <span className="text-sm font-bold text-foreground">{c.value}</span>
+                            <ExpectedReturnBadge pricePerToken={c.pricePerToken} />
                           </div>
 
                           {/* Progress */}
@@ -240,7 +273,9 @@ export default function MarketplacePage() {
                               <span className="text-xs text-muted font-normal ml-0.5">/token</span>
                             </div>
                             <span className="text-xs text-muted tabular-nums">
-                              {c.tokensAvailable.toLocaleString()} available
+                              {c.totalMilestones - c.completedMilestones > 0
+                                ? `${c.totalMilestones - c.completedMilestones} milestone${c.totalMilestones - c.completedMilestones !== 1 ? "s" : ""} remaining`
+                                : "All milestones complete"}
                             </span>
                           </div>
 
@@ -256,7 +291,7 @@ export default function MarketplacePage() {
                 <div className="text-center py-20 space-y-4">
                   <SlidersHorizontal className="h-10 w-10 text-muted mx-auto" />
                   <p className="text-muted font-medium">No contracts match your filters.</p>
-                  <Button variant="ghost" onPress={() => { setSearch(""); setCategory("All Categories"); setMinScore(0); }}>
+                  <Button variant="ghost" onPress={() => { setSearch(""); setCategory("All Categories"); setMinScore(0); setRiskFilter("all"); }}>
                     Clear filters
                   </Button>
                 </div>

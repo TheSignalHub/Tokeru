@@ -27,12 +27,700 @@ import type { Milestone } from "@/lib/types";
 
 type UserRole = "agency" | "client" | "investor" | "public";
 
-// ─── Component ────────────────────────────────────────────────────────────────
+/* ── Tab types ───────────────────────────────────────────────────────────── */
+type TabId = "overview" | "milestones" | "tokenization" | "activity";
+
+interface TabProps {
+  contract: NonNullable<ReturnType<typeof useContract>["contract"]>;
+  escrow: ReturnType<typeof useContract>["escrow"];
+  blockchainEvents: ReturnType<typeof useContract>["blockchainEvents"];
+  userRole: UserRole;
+  deposited: number;
+  released: number;
+  escrowPct: number;
+  id: string;
+  exposure: { showDescription: boolean; showMilestones: boolean; showDisputeHistory: boolean };
+  // Milestone action state (for MilestonesTab)
+  approvingId: number | null;
+  rejectingId: number | null;
+  rejectReason: string;
+  showRejectForm: number | null;
+  setShowRejectForm: (id: number | null) => void;
+  setRejectReason: (reason: string) => void;
+  handleApprove: (milestoneId: number) => void;
+  handleReject: (milestoneId: number) => void;
+  // Pool state (for TokenizationTab)
+  poolStatus: "idle" | "loading" | "success" | "error";
+  setPoolStatus: (s: "idle" | "loading" | "success" | "error") => void;
+  poolLoading: boolean;
+  setPoolLoading: (b: boolean) => void;
+  refresh: () => void;
+  getAuthToken: () => Promise<string | null>;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tab 1: Overview
+   ═══════════════════════════════════════════════════════════════════════════ */
+function OverviewTab({ contract, escrow, userRole, deposited, released, escrowPct, exposure }: TabProps) {
+  const milestones = contract.milestones ?? [];
+  const approved = milestones.filter((m) => m.status === "approved").length;
+
+  return (
+    <div className="space-y-6">
+      {/* Escrow status card */}
+      {(userRole === "agency" || userRole === "client") && (
+        <Card className="border border-border bg-surface rounded-xl shadow-sm overflow-hidden">
+          <div
+            className="h-1.5 bg-gradient-to-r from-accent to-success transition-all duration-500"
+            style={{ width: `${escrowPct}%` }}
+          />
+          <CardContent className="p-5 sm:p-6">
+            <h2 className="text-base font-bold mb-4 tracking-tight">Escrow Status</h2>
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              {[
+                { label: "Deposited", value: formatCurrency(deposited), color: "text-success" },
+                { label: "Released", value: formatCurrency(released), color: "text-accent" },
+                { label: "Locked", value: formatCurrency(deposited - released), color: "text-foreground" },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="p-3 rounded-lg bg-surface-secondary border border-border/60 text-center">
+                  <div className={`text-lg font-bold tabular-nums ${color}`}>{value}</div>
+                  <div className="text-xs text-muted mt-0.5 font-medium uppercase tracking-wider">{label}</div>
+                </div>
+              ))}
+            </div>
+            <LabeledProgress label="Payout Progress" value={escrowPct} color="success" />
+          </CardContent>
+        </Card>
+      )}
+      {userRole === "investor" && (
+        <Card className="border border-border rounded-xl shadow-sm overflow-hidden">
+          <CardContent className="p-5">
+            <LabeledProgress label="Contract Progress" value={escrowPct} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Milestone summary table */}
+      <Card className="border border-border bg-surface rounded-xl shadow-sm">
+        <CardContent className="p-5 sm:p-6">
+          <h2 className="text-base font-bold mb-4 tracking-tight">Milestone Summary</h2>
+          {userRole === "investor" && !exposure.showMilestones ? (
+            <p className="text-sm text-muted">Milestone details are private. {approved}/{milestones.length} milestones completed.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/60 text-left">
+                    <th className="pb-2 font-semibold text-muted text-xs uppercase tracking-wider">Milestone</th>
+                    <th className="pb-2 font-semibold text-muted text-xs uppercase tracking-wider text-right">Amount</th>
+                    <th className="pb-2 font-semibold text-muted text-xs uppercase tracking-wider text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {milestones.map((m) => (
+                    <tr key={m.id}>
+                      <td className="py-2.5 text-foreground font-medium">{m.name}</td>
+                      <td className="py-2.5 text-right text-muted tabular-nums">{formatCurrency(m.amount)}</td>
+                      <td className="py-2.5 text-right">
+                        <StatusBadge status={m.status as "pending" | "delivered" | "approved" | "rejected" | "disputed"} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Contract stats */}
+      <Card className="border border-border bg-surface rounded-xl shadow-sm">
+        <CardContent className="p-5 sm:p-6">
+          <h2 className="text-base font-bold mb-4 tracking-tight">Contract Details</h2>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-xs text-muted font-medium uppercase tracking-wider mb-1">Total Value</p>
+              <p className="font-bold text-foreground">{formatCurrency(contract.totalValue)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted font-medium uppercase tracking-wider mb-1">Created</p>
+              <p className="font-bold text-foreground">
+                {contract.createdAt ? new Date(contract.createdAt).toLocaleDateString() : "N/A"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted font-medium uppercase tracking-wider mb-1">Agency</p>
+              <p className="font-bold text-foreground">
+                {userRole === "agency" ? "You" : truncateMiddle(contract.agency, 6, 4)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted font-medium uppercase tracking-wider mb-1">Client</p>
+              <p className="font-bold text-foreground">
+                {userRole === "investor" || userRole === "public"
+                  ? "Private"
+                  : userRole === "client"
+                    ? "You"
+                    : truncateMiddle(contract.client, 6, 4)}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tab 2: Milestones (interactive timeline)
+   ═══════════════════════════════════════════════════════════════════════════ */
+function MilestonesTab(props: TabProps) {
+  const {
+    contract, userRole, id, exposure,
+    approvingId, rejectingId, rejectReason, showRejectForm,
+    setShowRejectForm, setRejectReason, handleApprove, handleReject,
+  } = props;
+
+  function getActionLabel(m: Milestone): { text: string; highlight: "agency" | "client" | null } {
+    switch (m.status) {
+      case "pending": return { text: "Waiting for agency to deliver", highlight: "agency" };
+      case "delivered": return { text: "Waiting for client review", highlight: "client" };
+      case "rejected": return { text: "Waiting for agency response", highlight: "agency" };
+      case "approved": return { text: "Completed", highlight: null };
+      case "disputed": return { text: "In dispute", highlight: null };
+      default: return { text: "", highlight: null };
+    }
+  }
+
+  function getMilestoneTimeline(m: Milestone) {
+    const events: { label: string; date?: Date }[] = [];
+    if (m.deliveredAt) events.push({ label: "Delivered", date: new Date(m.deliveredAt) });
+    if (m.approvedAt) events.push({ label: "Approved", date: new Date(m.approvedAt) });
+    if (m.status === "rejected") events.push({ label: "Rejected" });
+    if (m.status === "disputed") events.push({ label: "Disputed" });
+    return events;
+  }
+
+  if (userRole === "investor" && !exposure.showMilestones) {
+    return (
+      <Card className="border border-border rounded-xl p-5">
+        <p className="text-sm text-muted">
+          Milestone details are private. {contract.milestones.filter(m => m.status === "approved").length}/{contract.milestones.length} milestones completed.
+        </p>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="relative pl-7">
+      {contract.milestones.length > 1 && (
+        <div className="absolute left-[11px] top-5 bottom-5 w-px bg-gradient-to-b from-success/40 to-border/20" />
+      )}
+      <div className="space-y-4">
+        {contract.milestones.map((m, i) => {
+          const isApproved = m.status === "approved";
+          const isDelivered = m.status === "delivered";
+          const isRejected = m.status === "rejected";
+          const isDisputed = m.status === "disputed";
+          const isPending = m.status === "pending";
+          const actionInfo = getActionLabel(m);
+          const timeline = getMilestoneTimeline(m);
+
+          return (
+            <motion.div
+              key={m.id ?? i}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.07, type: "spring", stiffness: 160 }}
+              className="relative"
+            >
+              {/* Timeline dot */}
+              <div className="absolute -left-7 top-4 z-10 w-5 h-5 flex items-center justify-center">
+                {isApproved ? (
+                  <CheckCircle className="h-5 w-5 text-success" />
+                ) : isDelivered ? (
+                  <Clock className="h-5 w-5 text-warning" />
+                ) : isRejected ? (
+                  <XCircle className="h-5 w-5 text-danger" />
+                ) : isDisputed ? (
+                  <ShieldAlert className="h-5 w-5 text-danger" />
+                ) : (
+                  <div className="h-3.5 w-3.5 rounded-full border-2 border-border bg-surface" />
+                )}
+              </div>
+
+              <Card
+                className={`border rounded-xl shadow-sm transition-all ${
+                  isDelivered ? "border-warning/40 bg-warning/5"
+                  : isApproved ? "border-success/30 bg-success/5"
+                  : isRejected ? "border-danger/30 bg-danger/5"
+                  : isDisputed ? "border-danger/30 bg-danger/5"
+                  : "border-border bg-surface hover:border-accent/30"
+                }`}
+              >
+                <CardContent className="p-4">
+                  {/* Milestone header */}
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm text-foreground truncate">{m.name}</div>
+                      <div className="text-xs text-muted mt-0.5 font-medium">{formatCurrency(m.amount)}</div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                      <StatusBadge status={m.status as "pending" | "delivered" | "approved" | "rejected" | "disputed"} />
+                    </div>
+                  </div>
+
+                  {/* Who needs to act */}
+                  {actionInfo.text && !isApproved && (
+                    <div className={`mt-2 text-xs font-medium px-2 py-1 rounded-md inline-block ${
+                      actionInfo.highlight === userRole
+                        ? "bg-accent/10 text-accent border border-accent/20"
+                        : "text-muted"
+                    }`}>
+                      {actionInfo.highlight === userRole ? "Your turn: " : ""}
+                      {actionInfo.text}
+                    </div>
+                  )}
+
+                  {/* Proof hash */}
+                  {m.proofHash && (
+                    <div className="mt-3 pt-3 border-t border-border/50">
+                      <p className="text-xs text-muted font-medium">
+                        Proof: <code className="font-mono text-accent">{truncateMiddle(m.proofHash, 8, 6)}</code>
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Timeline events */}
+                  {timeline.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-border/50 flex flex-wrap gap-3">
+                      {timeline.map((ev) => (
+                        <span key={ev.label} className="text-xs text-muted">
+                          {ev.label}
+                          {ev.date && (
+                            <span className="ml-1 font-mono text-foreground/60">
+                              {new Date(ev.date).toLocaleDateString()}
+                            </span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* ── Role-based actions ─────────────────────────── */}
+                  {/* AGENCY actions */}
+                  {userRole === "agency" && (
+                    <>
+                      {isPending && (
+                        <div className="mt-4 pt-4 border-t border-border/50">
+                          <Link
+                            href={`/contracts/${id}/deliver`}
+                            className="inline-flex items-center gap-2 text-sm font-semibold text-accent border border-accent/30 rounded-lg px-4 py-2 hover:bg-accent/5 active:scale-[0.98] transition-all"
+                          >
+                            <Upload className="h-3.5 w-3.5" /> Submit Deliverable
+                          </Link>
+                        </div>
+                      )}
+                      {isDelivered && (
+                        <div className="mt-4 pt-4 border-t border-border/50">
+                          <p className="text-xs text-muted italic">Awaiting client review</p>
+                        </div>
+                      )}
+                      {isRejected && (
+                        <div className="flex flex-col sm:flex-row gap-2 mt-4 pt-4 border-t border-border/50">
+                          <Link
+                            href={`/contracts/${id}/dispute?milestone=${m.id}`}
+                            className="flex-1 inline-flex items-center justify-center h-9 px-4 rounded-lg bg-danger/10 text-danger text-sm font-semibold border border-danger/30 hover:bg-danger/15 active:scale-[0.98] transition-all"
+                          >
+                            <ShieldAlert className="h-4 w-4 mr-2" /> Start Dispute
+                          </Link>
+                          <Link
+                            href={`/contracts/${id}/deliver`}
+                            className="flex-1 inline-flex items-center justify-center h-9 px-4 rounded-lg border border-border text-muted text-sm font-semibold hover:text-foreground hover:border-accent/50 active:scale-[0.98] transition-all"
+                          >
+                            Accept Rejection
+                          </Link>
+                        </div>
+                      )}
+                      {isDisputed && (
+                        <div className="mt-4 pt-4 border-t border-border/50">
+                          <Link href={`/contracts/${id}/dispute`} className="inline-flex items-center gap-2 text-sm font-semibold text-danger hover:underline">
+                            <ExternalLink className="h-3.5 w-3.5" /> View Dispute
+                          </Link>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* CLIENT actions */}
+                  {userRole === "client" && (
+                    <>
+                      {isPending && (
+                        <div className="mt-4 pt-4 border-t border-border/50">
+                          <p className="text-xs text-muted italic">Waiting for agency to deliver</p>
+                        </div>
+                      )}
+                      {isDelivered && (
+                        <>
+                          <div className="flex flex-col sm:flex-row gap-2 mt-4 pt-4 border-t border-border/50">
+                            <Button
+                              onPress={() => handleApprove(m.id)}
+                              isDisabled={approvingId === m.id}
+                              className="flex-1 bg-success text-success-foreground text-sm font-semibold rounded-lg shadow-sm shadow-success/20 active:scale-[0.98]"
+                            >
+                              {approvingId === m.id ? (
+                                <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Approving...</>
+                              ) : (
+                                <><CheckCircle className="h-4 w-4 mr-2" /> Approve</>
+                              )}
+                            </Button>
+                            <Button
+                              onPress={() => {
+                                setShowRejectForm(showRejectForm === m.id ? null : m.id);
+                                setRejectReason("");
+                              }}
+                              className="flex-1 bg-danger/10 text-danger text-sm font-semibold rounded-lg border border-danger/30 hover:bg-danger/15 active:scale-[0.98]"
+                              variant="ghost"
+                            >
+                              <XCircle className="h-4 w-4 mr-2" /> Reject
+                            </Button>
+                          </div>
+
+                          {/* Reject form (inline) */}
+                          <AnimatePresence>
+                            {showRejectForm === m.id && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="mt-3 p-3 rounded-lg border border-danger/20 bg-danger/5 space-y-3">
+                                  <label className="text-xs font-semibold text-danger">Rejection Reason</label>
+                                  <p className="text-[11px] text-muted leading-snug">
+                                    Explain what needs to change. The agency can revise and re-submit.
+                                  </p>
+                                  <TextArea
+                                    value={rejectReason}
+                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setRejectReason(e.target.value)}
+                                    placeholder="Explain why this deliverable does not meet requirements..."
+                                    className="w-full resize-none text-sm"
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button
+                                      onPress={() => handleReject(m.id)}
+                                      isDisabled={rejectingId === m.id || !rejectReason.trim()}
+                                      className="bg-danger text-danger-foreground text-sm font-semibold rounded-lg px-4"
+                                      size="sm"
+                                    >
+                                      {rejectingId === m.id ? (
+                                        <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Rejecting...</>
+                                      ) : (
+                                        "Confirm Rejection"
+                                      )}
+                                    </Button>
+                                    <Button
+                                      onPress={() => { setShowRejectForm(null); setRejectReason(""); }}
+                                      variant="ghost"
+                                      className="text-sm text-muted"
+                                      size="sm"
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </>
+                      )}
+                      {isRejected && (
+                        <div className="mt-4 pt-4 border-t border-border/50">
+                          <p className="text-xs text-muted italic">Awaiting agency response</p>
+                        </div>
+                      )}
+                      {isDisputed && (
+                        <div className="mt-4 pt-4 border-t border-border/50">
+                          <Link href={`/contracts/${id}/dispute`} className="inline-flex items-center gap-2 text-sm font-semibold text-danger hover:underline">
+                            <ExternalLink className="h-3.5 w-3.5" /> View Dispute
+                          </Link>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* INVESTOR sees read-only dispute indicator */}
+                  {userRole === "investor" && isDisputed && (
+                    <div className="mt-4 pt-4 border-t border-border/50">
+                      <span className="inline-flex items-center gap-1.5 text-xs text-danger font-medium">
+                        <ShieldAlert className="h-3.5 w-3.5" /> Dispute in progress
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tab 3: Tokenization (agency only)
+   ═══════════════════════════════════════════════════════════════════════════ */
+function TokenizationTab(props: TabProps) {
+  const { contract, userRole, id, exposure, poolStatus, setPoolStatus, poolLoading, setPoolLoading } = props;
+  const isTokenized = !!contract.tokenizationExposure;
+
+  return (
+    <div className="space-y-6">
+      {/* Token info card */}
+      {isTokenized && contract.tokenAddress ? (
+        <Card className="border border-brand/30 bg-brand/5 rounded-xl shadow-sm">
+          <CardHeader className="px-5 pt-5 pb-2 flex items-center gap-2">
+            <Coins className="h-4 w-4 text-brand" />
+            <p className="text-sm font-bold">Tokenized Asset</p>
+          </CardHeader>
+          <CardContent className="px-5 pb-5 space-y-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted font-medium">Token</span>
+              <span className="font-mono text-xs text-accent flex items-center gap-1 cursor-pointer hover:underline">
+                {truncateMiddle(contract.tokenAddress, 6, 4)} <ExternalLink className="h-3 w-3" />
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted font-medium">Network</span>
+              <span className="font-semibold text-foreground">Base Sepolia</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted font-medium">Status</span>
+              {contract.onChainAddress ? (
+                <span className="flex items-center gap-1 text-xs font-semibold text-success">
+                  <CheckCircle className="h-3.5 w-3.5" /> On-chain
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-xs font-semibold text-warning">
+                  <AlertTriangle className="h-3.5 w-3.5" /> DB only — deploy when ready
+                </span>
+              )}
+            </div>
+            <Link
+              href={`/marketplace/${id}`}
+              className="flex items-center justify-center h-8 rounded-md bg-surface-secondary text-accent text-xs font-semibold border border-border/60 hover:bg-default active:scale-[0.98] transition-all"
+            >
+              View on Marketplace
+            </Link>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border border-border bg-surface rounded-xl shadow-sm">
+          <CardContent className="p-6 text-center space-y-4">
+            <Coins className="h-10 w-10 text-brand mx-auto" />
+            <h3 className="font-bold text-lg">Tokenize This Contract</h3>
+            <p className="text-sm text-muted max-w-md mx-auto">
+              Open this contract for investor participation. Set your price and let investors buy tokens backed by contract value.
+            </p>
+            <Link
+              href={`/contracts/${id}/tokenize`}
+              className="inline-flex items-center gap-2 h-10 px-6 rounded-lg bg-brand text-brand-foreground text-sm font-semibold shadow-md shadow-brand/20 hover:opacity-90 active:scale-[0.98] transition-all"
+            >
+              <Coins className="h-4 w-4" /> Tokenize Contract
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Activate Uniswap Pool */}
+      {isTokenized && contract.tokenAddress && userRole === "agency" && (
+        <Card className="border border-border bg-surface rounded-xl shadow-sm">
+          <CardContent className="p-5 space-y-3">
+            <h3 className="text-sm font-bold">Uniswap Pool</h3>
+            {poolStatus === "success" ? (
+              <div className="flex items-center gap-2 p-3 rounded-md bg-success/10 text-success text-sm font-medium">
+                <CheckCircle className="h-4 w-4 shrink-0" />
+                Pool active! Investors can now trade on Uniswap
+              </div>
+            ) : poolStatus === "error" ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 p-3 rounded-md bg-danger/10 text-danger text-sm font-medium">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  Pool activation failed
+                </div>
+                <button
+                  onClick={() => setPoolStatus("idle")}
+                  className="flex items-center justify-center w-full h-9 rounded-md bg-surface-secondary text-sm font-semibold border border-brand/40 text-brand hover:bg-brand/10 active:scale-[0.98] transition-all"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  disabled={poolStatus === "loading"}
+                  onClick={async () => {
+                    setPoolStatus("loading");
+                    setPoolLoading(true);
+                    try {
+                      const res = await fetch(`/api/contracts/${id}/pool`, {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          ...(typeof window !== "undefined" && localStorage.getItem("trustsignal_wallet")
+                            ? { "X-Wallet-Address": localStorage.getItem("trustsignal_wallet")! }
+                            : {}),
+                        },
+                      });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.error);
+                      setPoolStatus("success");
+                    } catch {
+                      setPoolStatus("error");
+                    } finally {
+                      setPoolLoading(false);
+                    }
+                  }}
+                  className="flex items-center justify-center w-full h-9 rounded-md bg-surface-secondary text-sm font-semibold border border-brand/40 text-brand hover:bg-brand/10 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {poolStatus === "loading" ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Creating pool...</>
+                  ) : (
+                    "Activate Uniswap Pool"
+                  )}
+                </button>
+                {poolStatus === "idle" && (
+                  <p className="text-[11px] text-muted text-center">Enable secondary market trading for your contract tokens</p>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Investor visibility settings */}
+      {isTokenized && (
+        <Card className="border border-border bg-surface rounded-xl shadow-sm">
+          <CardContent className="p-5 space-y-3">
+            <h3 className="text-sm font-bold">Investor Visibility</h3>
+            <div className="space-y-2 text-sm">
+              {[
+                { label: "Contract description", enabled: exposure.showDescription },
+                { label: "Milestone details", enabled: exposure.showMilestones },
+                { label: "Dispute history", enabled: exposure.showDisputeHistory },
+              ].map(({ label, enabled }) => (
+                <div key={label} className="flex items-center justify-between py-1">
+                  <span className="text-muted">{label}</span>
+                  <span className={`text-xs font-semibold ${enabled ? "text-success" : "text-muted"}`}>
+                    {enabled ? "Visible" : "Hidden"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Marketplace link */}
+      {isTokenized && (
+        <div className="text-center">
+          <Link
+            href={`/marketplace/${id}`}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-accent hover:underline"
+          >
+            View marketplace listing <ExternalLink className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tab 4: Activity
+   ═══════════════════════════════════════════════════════════════════════════ */
+function ActivityTab({ contract, blockchainEvents }: TabProps) {
+  return (
+    <div className="space-y-6">
+      {/* Blockchain events */}
+      <Card className="border border-border bg-surface rounded-xl shadow-sm">
+        <CardHeader className="px-5 pt-5 pb-2 flex items-center gap-2">
+          <Zap className="h-4 w-4 text-accent" />
+          <p className="text-sm font-bold">On-Chain Activity</p>
+        </CardHeader>
+        <CardContent className="px-5 pb-5">
+          {blockchainEvents.length > 0 ? (
+            <div className="space-y-2">
+              {blockchainEvents.map((evt) => (
+                <div
+                  key={evt.id}
+                  className="flex items-center justify-between text-xs py-1.5 border-b border-border/40 last:border-0"
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        evt.status === "confirmed" ? "bg-success"
+                        : evt.status === "failed" ? "bg-danger"
+                        : "bg-warning"
+                      }`}
+                    />
+                    <span className="text-muted capitalize">{evt.operation.replace(/_/g, " ")}</span>
+                  </div>
+                  {evt.txHash ? (
+                    <a
+                      href={`https://sepolia.basescan.org/tx/${evt.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-accent hover:underline flex items-center gap-1"
+                    >
+                      {evt.txHash.slice(0, 6)}...{evt.txHash.slice(-4)}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : (
+                    <span className={evt.status === "failed" ? "text-danger" : "text-muted"}>
+                      {evt.status === "failed" ? "failed" : "pending"}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted py-4 text-center">No on-chain events recorded yet.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Dispute history */}
+      {contract.status === "disputed" && (
+        <Card className="border border-danger/30 bg-danger/5 rounded-xl shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <ShieldAlert className="h-4 w-4 text-danger" />
+              <h3 className="text-sm font-bold text-danger">Active Dispute</h3>
+            </div>
+            <p className="text-sm text-muted mb-3">This contract has an active dispute that requires attention.</p>
+            <Link
+              href={`/contracts/${contract.id}/dispute`}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-danger hover:underline"
+            >
+              View Dispute Details <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Main Component
+   ═══════════════════════════════════════════════════════════════════════════ */
 export default function ContractDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { walletAddress, authenticated, login, getAuthToken } = useAuth();
   const { contract, escrow, blockchainEvents, loading, error, refresh } = useContract(id);
 
+  const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -49,15 +737,12 @@ export default function ContractDetailPage() {
     : (authenticated && isTokenized) ? "investor"
     : "public";
 
-  // Parse exposure settings for investor filtering
   const exposure = contract?.tokenizationExposure
     ? (JSON.parse(contract.tokenizationExposure) as { showDescription: boolean; showMilestones: boolean; showDisputeHistory: boolean })
     : { showDescription: false, showMilestones: false, showDisputeHistory: false };
 
   // ─── Agency verification status ──────────────────────────────────────────
-  const agencyVerifyUrl = contract?.agency
-    ? `/api/users/${contract.agency}/verify`
-    : null;
+  const agencyVerifyUrl = contract?.agency ? `/api/users/${contract.agency}/verify` : null;
   const { data: agencyVerification } = useApi<{
     verified: boolean;
     attestationUid: string | null;
@@ -113,10 +798,7 @@ export default function ContractDetailPage() {
   if (error?.includes("invitation to join")) {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground mb-8 transition-colors"
-        >
+        <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground mb-8 transition-colors">
           <ArrowLeft className="h-4 w-4" /> Back to Dashboard
         </Link>
         <Card className="border border-warning/30 bg-warning/5 rounded-xl shadow-none">
@@ -137,10 +819,7 @@ export default function ContractDetailPage() {
   if (error || !contract) {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground mb-8 transition-colors"
-        >
+        <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground mb-8 transition-colors">
           <ArrowLeft className="h-4 w-4" /> Back to Dashboard
         </Link>
         <Card className="border border-danger/30 bg-danger/5 rounded-xl shadow-none">
@@ -154,49 +833,38 @@ export default function ContractDetailPage() {
 
   const deposited = escrow?.depositedAmount ?? 0;
   const released = escrow?.releasedAmount ?? 0;
-  const escrowPct =
-    contract.totalValue > 0
-      ? Math.round((released / contract.totalValue) * 100)
-      : 0;
+  const escrowPct = contract.totalValue > 0 ? Math.round((released / contract.totalValue) * 100) : 0;
 
-  // ─── Helper: who needs to act? ─────────────────────────────────────────────
-  function getActionLabel(m: Milestone): {
-    text: string;
-    highlight: "agency" | "client" | null;
-  } {
-    switch (m.status) {
-      case "pending":
-        return { text: "Waiting for agency to deliver", highlight: "agency" };
-      case "delivered":
-        return { text: "Waiting for client review", highlight: "client" };
-      case "rejected":
-        return { text: "Waiting for agency response", highlight: "agency" };
-      case "approved":
-        return { text: "Completed", highlight: null };
-      case "disputed":
-        return { text: "In dispute", highlight: null };
-      default:
-        return { text: "", highlight: null };
-    }
+  // ─── Build visible tabs ────────────────────────────────────────────────────
+  const tabs: { id: TabId; label: string }[] = [
+    { id: "overview", label: "Overview" },
+  ];
+  if (userRole === "agency" || userRole === "client") {
+    tabs.push({ id: "milestones", label: "Milestones" });
+  }
+  if (userRole === "agency" && (contract.status === "active" || contract.status === "completed")) {
+    tabs.push({ id: "tokenization", label: "Tokenization" });
+  }
+  if (userRole === "agency" || userRole === "client") {
+    tabs.push({ id: "activity", label: "Activity" });
   }
 
-  // ─── Helper: milestone timeline events ──────────────────────────────────────
-  function getMilestoneTimeline(m: Milestone) {
-    const events: { label: string; date?: Date }[] = [];
-    if (m.deliveredAt) events.push({ label: "Delivered", date: new Date(m.deliveredAt) });
-    if (m.approvedAt) events.push({ label: "Approved", date: new Date(m.approvedAt) });
-    if (m.status === "rejected") events.push({ label: "Rejected" });
-    if (m.status === "disputed") events.push({ label: "Disputed" });
-    return events;
-  }
+  // Ensure activeTab is valid for current role
+  const validTabIds = tabs.map((t) => t.id);
+  const currentTab = validTabIds.includes(activeTab) ? activeTab : "overview";
+
+  const tabProps: TabProps = {
+    contract, escrow, blockchainEvents, userRole, deposited, released, escrowPct, id, exposure,
+    approvingId, rejectingId, rejectReason, showRejectForm,
+    setShowRejectForm, setRejectReason, handleApprove, handleReject,
+    poolStatus, setPoolStatus, poolLoading, setPoolLoading,
+    refresh, getAuthToken,
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* Back */}
-      <Link
-        href="/dashboard"
-        className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground mb-8 transition-colors"
-      >
+      <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground mb-8 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Dashboard
       </Link>
 
@@ -207,30 +875,15 @@ export default function ContractDetailPage() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground truncate">
               {contract.title}
             </h1>
-            <StatusBadge
-              status={
-                contract.status as
-                  | "draft"
-                  | "active"
-                  | "completed"
-                  | "disputed"
-              }
-            />
+            <StatusBadge status={contract.status as "draft" | "active" | "completed" | "disputed"} />
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
             <span className="inline-flex items-center gap-1.5">
               Agency:{" "}
               {userRole === "agency" ? (
-                <Link
-                  href="/profile"
-                  className="font-semibold text-accent hover:underline"
-                >
-                  You
-                </Link>
+                <Link href="/profile" className="font-semibold text-accent hover:underline">You</Link>
               ) : (
-                <span className="font-semibold text-foreground">
-                  {truncateMiddle(contract.agency, 6, 4)}
-                </span>
+                <span className="font-semibold text-foreground">{truncateMiddle(contract.agency, 6, 4)}</span>
               )}
               {agencyVerification?.verified && agencyVerification.easScanUrl && (
                 <a
@@ -240,8 +893,7 @@ export default function ContractDetailPage() {
                   className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-semibold hover:bg-success/20 transition-colors"
                   title="Verified on EAS"
                 >
-                  <BadgeCheck className="h-3 w-3" />
-                  Verified
+                  <BadgeCheck className="h-3 w-3" /> Verified
                 </a>
               )}
             </span>
@@ -250,12 +902,8 @@ export default function ContractDetailPage() {
                 <span className="w-px h-3 bg-border" />
                 <span>
                   Client:{" "}
-                  <span
-                    className={`font-semibold ${userRole === "client" ? "text-accent" : "text-foreground"}`}
-                  >
-                    {userRole === "client"
-                      ? "You"
-                      : truncateMiddle(contract.client, 6, 4)}
+                  <span className={`font-semibold ${userRole === "client" ? "text-accent" : "text-foreground"}`}>
+                    {userRole === "client" ? "You" : truncateMiddle(contract.client, 6, 4)}
                   </span>
                 </span>
               </>
@@ -283,19 +931,11 @@ export default function ContractDetailPage() {
       {/* Action error */}
       <AnimatePresence>
         {actionError && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="mb-6"
-          >
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="mb-6">
             <div className="flex items-center gap-3 p-4 rounded-xl border border-danger/30 bg-danger/5 text-sm text-danger font-medium">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               {actionError}
-              <button
-                onClick={() => setActionError(null)}
-                className="ml-auto text-danger/60 hover:text-danger"
-              >
+              <button onClick={() => setActionError(null)} className="ml-auto text-danger/60 hover:text-danger">
                 <XCircle className="h-4 w-4" />
               </button>
             </div>
@@ -325,12 +965,7 @@ export default function ContractDetailPage() {
           {(() => {
             const steps = ["Draft", "Deposit", "Active", "Completed"];
             const statusToStep: Record<string, number> = {
-              draft: 0,
-              invited: 0,
-              pending_deposit: 1,
-              active: 2,
-              completed: 3,
-              disputed: 2,
+              draft: 0, invited: 0, pending_deposit: 1, active: 2, completed: 3, disputed: 2,
             };
             const currentStep = statusToStep[contract.status] ?? 0;
             const isDisputed = contract.status === "disputed";
@@ -343,28 +978,16 @@ export default function ContractDetailPage() {
                   return (
                     <div key={label} className="flex items-center flex-1 min-w-0">
                       <div className="flex flex-col items-center flex-1 min-w-0">
-                        <div
-                          className={`h-2 w-full rounded-full ${
-                            isDone
-                              ? "bg-success"
-                              : isActive
-                                ? isDisputed
-                                  ? "bg-danger"
-                                  : "bg-accent"
-                                : "bg-border"
-                          }`}
-                        />
-                        <span
-                          className={`text-xs mt-1 font-medium ${
-                            isDone
-                              ? "text-success"
-                              : isActive
-                                ? isDisputed
-                                  ? "text-danger"
-                                  : "text-accent"
-                                : "text-muted"
-                          }`}
-                        >
+                        <div className={`h-2 w-full rounded-full ${
+                          isDone ? "bg-success"
+                          : isActive ? (isDisputed ? "bg-danger" : "bg-accent")
+                          : "bg-border"
+                        }`} />
+                        <span className={`text-xs mt-1 font-medium ${
+                          isDone ? "text-success"
+                          : isActive ? (isDisputed ? "text-danger" : "text-accent")
+                          : "text-muted"
+                        }`}>
                           {isActive && isDisputed && label === "Active" ? "Disputed" : label}
                         </span>
                       </div>
@@ -426,7 +1049,7 @@ export default function ContractDetailPage() {
                 onPress={async () => {
                   if (!confirm("Are you sure? This will cancel the contract and refund remaining escrow.")) return;
                   try {
-                    const token = await getAuthToken();
+                    await getAuthToken();
                     await postApi(`/api/contracts/${id}/refund`, {});
                     toast.success("Contract cancelled and refund initiated");
                     refresh();
@@ -454,7 +1077,7 @@ export default function ContractDetailPage() {
                   onPress={async () => {
                     if (!confirm("Are you sure? This will cancel the contract and refund remaining escrow.")) return;
                     try {
-                      const token = await getAuthToken();
+                      await getAuthToken();
                       await postApi(`/api/contracts/${id}/refund`, {});
                       toast.success("Contract cancelled and refund initiated");
                       refresh();
@@ -481,7 +1104,7 @@ export default function ContractDetailPage() {
                   className="ml-auto bg-danger text-danger-foreground"
                   onPress={async () => {
                     try {
-                      const token = await getAuthToken();
+                      await getAuthToken();
                       await postApi(`/api/contracts/${id}/refund`, {});
                       toast.success("Refund initiated");
                       refresh();
@@ -503,421 +1126,39 @@ export default function ContractDetailPage() {
 
       {userRole !== "public" ? (
         <div className="grid lg:grid-cols-[1fr_300px] gap-6">
-          {/* ── Main ──────────────────────────────────────────────────────────── */}
-          <div className="space-y-6 min-w-0">
-            {/* Escrow card — agency/client: full view; investor: progress only */}
-            {(userRole === "agency" || userRole === "client") && (
-              <Card className="border border-border bg-surface rounded-xl shadow-sm overflow-hidden">
-                <div
-                  className="h-1.5 bg-gradient-to-r from-accent to-success transition-all duration-500"
-                  style={{ width: `${escrowPct}%` }}
-                />
-                <CardContent className="p-5 sm:p-6">
-                  <h2 className="text-base font-bold mb-4 tracking-tight">
-                    Escrow Status
-                  </h2>
-                  <div className="grid grid-cols-3 gap-3 mb-5">
-                    {[
-                      {
-                        label: "Deposited",
-                        value: formatCurrency(deposited),
-                        color: "text-success",
-                      },
-                      {
-                        label: "Released",
-                        value: formatCurrency(released),
-                        color: "text-accent",
-                      },
-                      {
-                        label: "Locked",
-                        value: formatCurrency(deposited - released),
-                        color: "text-foreground",
-                      },
-                    ].map(({ label, value, color }) => (
-                      <div
-                        key={label}
-                        className="p-3 rounded-lg bg-surface-secondary border border-border/60 text-center"
-                      >
-                        <div className={`text-lg font-bold tabular-nums ${color}`}>
-                          {value}
-                        </div>
-                        <div className="text-xs text-muted mt-0.5 font-medium uppercase tracking-wider">
-                          {label}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <LabeledProgress
-                    label="Payout Progress"
-                    value={escrowPct}
-                    color="success"
-                  />
-                  <p className="text-[11px] text-muted mt-3 leading-snug">
-                    Escrow is held by the smart contract. Released to the agency upon milestone approval.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-            {userRole === "investor" && (
-              <Card className="border border-border rounded-xl shadow-sm overflow-hidden">
-                <CardContent className="p-5">
-                  <LabeledProgress label="Contract Progress" value={escrowPct} />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Milestones */}
-            <div>
-              <h2 className="text-base font-bold mb-5 tracking-tight">
-                Milestones
-              </h2>
-              {userRole === "investor" && !exposure.showMilestones ? (
-                <Card className="border border-border rounded-xl p-5">
-                  <p className="text-sm text-muted">Milestone details are private. {contract.milestones.filter(m => m.status === "approved").length}/{contract.milestones.length} milestones completed.</p>
-                </Card>
-              ) : (
-                <div className="relative pl-7">
-                  {contract.milestones.length > 1 && (
-                    <div className="absolute left-[11px] top-5 bottom-5 w-px bg-gradient-to-b from-success/40 to-border/20" />
-                  )}
-                  <div className="space-y-4">
-                    {contract.milestones.map((m, i) => {
-                      const isApproved = m.status === "approved";
-                      const isDelivered = m.status === "delivered";
-                      const isRejected = m.status === "rejected";
-                      const isDisputed = m.status === "disputed";
-                      const isPending = m.status === "pending";
-                      const actionInfo = getActionLabel(m);
-                      const timeline = getMilestoneTimeline(m);
-
-                      return (
-                        <motion.div
-                          key={m.id ?? i}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{
-                            delay: i * 0.07,
-                            type: "spring",
-                            stiffness: 160,
-                          }}
-                          className="relative"
-                        >
-                          {/* Timeline dot */}
-                          <div className="absolute -left-7 top-4 z-10 w-5 h-5 flex items-center justify-center">
-                            {isApproved ? (
-                              <CheckCircle className="h-5 w-5 text-success" />
-                            ) : isDelivered ? (
-                              <Clock className="h-5 w-5 text-warning" />
-                            ) : isRejected ? (
-                              <XCircle className="h-5 w-5 text-danger" />
-                            ) : isDisputed ? (
-                              <ShieldAlert className="h-5 w-5 text-danger" />
-                            ) : (
-                              <div className="h-3.5 w-3.5 rounded-full border-2 border-border bg-surface" />
-                            )}
-                          </div>
-
-                          <Card
-                            className={`border rounded-xl shadow-sm transition-all ${
-                              isDelivered
-                                ? "border-warning/40 bg-warning/5"
-                                : isApproved
-                                  ? "border-success/30 bg-success/5"
-                                  : isRejected
-                                    ? "border-danger/30 bg-danger/5"
-                                    : isDisputed
-                                      ? "border-danger/30 bg-danger/5"
-                                      : "border-border bg-surface hover:border-accent/30"
-                            }`}
-                          >
-                            <CardContent className="p-4">
-                              {/* Milestone header */}
-                              <div className="flex items-start justify-between gap-3 flex-wrap">
-                                <div className="min-w-0">
-                                  <div className="font-semibold text-sm text-foreground truncate">
-                                    {m.name}
-                                  </div>
-                                  <div className="text-xs text-muted mt-0.5 font-medium">
-                                    {formatCurrency(m.amount)}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                                  <StatusBadge
-                                    status={
-                                      m.status as
-                                        | "pending"
-                                        | "delivered"
-                                        | "approved"
-                                        | "rejected"
-                                        | "disputed"
-                                    }
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Who needs to act */}
-                              {actionInfo.text && !isApproved && (
-                                <div
-                                  className={`mt-2 text-xs font-medium px-2 py-1 rounded-md inline-block ${
-                                    actionInfo.highlight === userRole
-                                      ? "bg-accent/10 text-accent border border-accent/20"
-                                      : "text-muted"
-                                  }`}
-                                >
-                                  {actionInfo.highlight === userRole
-                                    ? "Your turn: "
-                                    : ""}
-                                  {actionInfo.text}
-                                </div>
-                              )}
-
-                              {/* Proof hash */}
-                              {m.proofHash && (
-                                <div className="mt-3 pt-3 border-t border-border/50">
-                                  <p className="text-xs text-muted font-medium">
-                                    Proof:{" "}
-                                    <code className="font-mono text-accent">
-                                      {truncateMiddle(m.proofHash, 8, 6)}
-                                    </code>
-                                  </p>
-                                </div>
-                              )}
-
-                              {/* Timeline events */}
-                              {timeline.length > 0 && (
-                                <div className="mt-3 pt-3 border-t border-border/50 flex flex-wrap gap-3">
-                                  {timeline.map((ev) => (
-                                    <span
-                                      key={ev.label}
-                                      className="text-xs text-muted"
-                                    >
-                                      {ev.label}
-                                      {ev.date && (
-                                        <span className="ml-1 font-mono text-foreground/60">
-                                          {new Date(ev.date).toLocaleDateString()}
-                                        </span>
-                                      )}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* ── Role-based actions ─────────────────────────── */}
-
-                              {/* AGENCY actions */}
-                              {userRole === "agency" && (
-                                <>
-                                  {isPending && (
-                                    <div className="mt-4 pt-4 border-t border-border/50">
-                                      <Link
-                                        href={`/contracts/${id}/deliver`}
-                                        className="inline-flex items-center gap-2 text-sm font-semibold text-accent border border-accent/30 rounded-lg px-4 py-2 hover:bg-accent/5 active:scale-[0.98] transition-all"
-                                      >
-                                        <Upload className="h-3.5 w-3.5" /> Submit
-                                        Deliverable
-                                      </Link>
-                                    </div>
-                                  )}
-                                  {isDelivered && (
-                                    <div className="mt-4 pt-4 border-t border-border/50">
-                                      <p className="text-xs text-muted italic">
-                                        Awaiting client review
-                                      </p>
-                                    </div>
-                                  )}
-                                  {isRejected && (
-                                    <div className="flex flex-col sm:flex-row gap-2 mt-4 pt-4 border-t border-border/50">
-                                      <Link
-                                        href={`/contracts/${id}/dispute?milestone=${m.id}`}
-                                        className="flex-1 inline-flex items-center justify-center h-9 px-4 rounded-lg bg-danger/10 text-danger text-sm font-semibold border border-danger/30 hover:bg-danger/15 active:scale-[0.98] transition-all"
-                                      >
-                                        <ShieldAlert className="h-4 w-4 mr-2" />
-                                        Start Dispute
-                                      </Link>
-                                      <Link
-                                        href={`/contracts/${id}/deliver`}
-                                        className="flex-1 inline-flex items-center justify-center h-9 px-4 rounded-lg border border-border text-muted text-sm font-semibold hover:text-foreground hover:border-accent/50 active:scale-[0.98] transition-all"
-                                      >
-                                        Accept Rejection
-                                      </Link>
-                                    </div>
-                                  )}
-                                  {isDisputed && (
-                                    <div className="mt-4 pt-4 border-t border-border/50">
-                                      <Link
-                                        href={`/contracts/${id}/dispute`}
-                                        className="inline-flex items-center gap-2 text-sm font-semibold text-danger hover:underline"
-                                      >
-                                        <ExternalLink className="h-3.5 w-3.5" />
-                                        View Dispute
-                                      </Link>
-                                    </div>
-                                  )}
-                                </>
-                              )}
-
-                              {/* CLIENT actions */}
-                              {userRole === "client" && (
-                                <>
-                                  {isPending && (
-                                    <div className="mt-4 pt-4 border-t border-border/50">
-                                      <p className="text-xs text-muted italic">
-                                        Waiting for agency to deliver
-                                      </p>
-                                    </div>
-                                  )}
-                                  {isDelivered && (
-                                    <>
-                                      <div className="flex flex-col sm:flex-row gap-2 mt-4 pt-4 border-t border-border/50">
-                                        <Button
-                                          onPress={() => handleApprove(m.id)}
-                                          isDisabled={approvingId === m.id}
-                                          className="flex-1 bg-success text-success-foreground text-sm font-semibold rounded-lg shadow-sm shadow-success/20 active:scale-[0.98]"
-                                        >
-                                          {approvingId === m.id ? (
-                                            <>
-                                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                              Approving...
-                                            </>
-                                          ) : (
-                                            <>
-                                              <CheckCircle className="h-4 w-4 mr-2" />
-                                              Approve
-                                            </>
-                                          )}
-                                        </Button>
-                                        <Button
-                                          onPress={() => {
-                                            setShowRejectForm(
-                                              showRejectForm === m.id
-                                                ? null
-                                                : m.id,
-                                            );
-                                            setRejectReason("");
-                                          }}
-                                          className="flex-1 bg-danger/10 text-danger text-sm font-semibold rounded-lg border border-danger/30 hover:bg-danger/15 active:scale-[0.98]"
-                                          variant="ghost"
-                                        >
-                                          <XCircle className="h-4 w-4 mr-2" />
-                                          Reject
-                                        </Button>
-                                      </div>
-
-                                      {/* Reject form (inline) */}
-                                      <AnimatePresence>
-                                        {showRejectForm === m.id && (
-                                          <motion.div
-                                            initial={{ opacity: 0, height: 0 }}
-                                            animate={{ opacity: 1, height: "auto" }}
-                                            exit={{ opacity: 0, height: 0 }}
-                                            className="overflow-hidden"
-                                          >
-                                            <div className="mt-3 p-3 rounded-lg border border-danger/20 bg-danger/5 space-y-3">
-                                              <label className="text-xs font-semibold text-danger">
-                                                Rejection Reason
-                                              </label>
-                                              <p className="text-[11px] text-muted leading-snug">
-                                                Explain what needs to change. The agency can revise and re-submit.
-                                              </p>
-                                              <TextArea
-                                                value={rejectReason}
-                                                onChange={(
-                                                  e: React.ChangeEvent<HTMLTextAreaElement>,
-                                                ) =>
-                                                  setRejectReason(e.target.value)
-                                                }
-                                                placeholder="Explain why this deliverable does not meet requirements..."
-                                                className="w-full resize-none text-sm"
-                                              />
-                                              <div className="flex gap-2">
-                                                <Button
-                                                  onPress={() =>
-                                                    handleReject(m.id)
-                                                  }
-                                                  isDisabled={
-                                                    rejectingId === m.id ||
-                                                    !rejectReason.trim()
-                                                  }
-                                                  className="bg-danger text-danger-foreground text-sm font-semibold rounded-lg px-4"
-                                                  size="sm"
-                                                >
-                                                  {rejectingId === m.id ? (
-                                                    <>
-                                                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                                                      Rejecting...
-                                                    </>
-                                                  ) : (
-                                                    "Confirm Rejection"
-                                                  )}
-                                                </Button>
-                                                <Button
-                                                  onPress={() => {
-                                                    setShowRejectForm(null);
-                                                    setRejectReason("");
-                                                  }}
-                                                  variant="ghost"
-                                                  className="text-sm text-muted"
-                                                  size="sm"
-                                                >
-                                                  Cancel
-                                                </Button>
-                                              </div>
-                                            </div>
-                                          </motion.div>
-                                        )}
-                                      </AnimatePresence>
-                                    </>
-                                  )}
-                                  {isRejected && (
-                                    <div className="mt-4 pt-4 border-t border-border/50">
-                                      <p className="text-xs text-muted italic">
-                                        Awaiting agency response
-                                      </p>
-                                    </div>
-                                  )}
-                                  {isDisputed && (
-                                    <div className="mt-4 pt-4 border-t border-border/50">
-                                      <Link
-                                        href={`/contracts/${id}/dispute`}
-                                        className="inline-flex items-center gap-2 text-sm font-semibold text-danger hover:underline"
-                                      >
-                                        <ExternalLink className="h-3.5 w-3.5" />
-                                        View Dispute
-                                      </Link>
-                                    </div>
-                                  )}
-                                </>
-                              )}
-
-                              {/* INVESTOR sees read-only dispute indicator */}
-                              {userRole === "investor" && isDisputed && (
-                                <div className="mt-4 pt-4 border-t border-border/50">
-                                  <span className="inline-flex items-center gap-1.5 text-xs text-danger font-medium">
-                                    <ShieldAlert className="h-3.5 w-3.5" />
-                                    Dispute in progress
-                                  </span>
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+          {/* ── Main content with tabs ─────────────────────────────────────── */}
+          <div className="min-w-0">
+            {/* Tab bar */}
+            <div className="flex border-b border-border mb-6">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${
+                    currentTab === tab.id
+                      ? "border-accent text-accent"
+                      : "border-transparent text-muted hover:text-foreground"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
+
+            {/* Tab content */}
+            {currentTab === "overview" && <OverviewTab {...tabProps} />}
+            {currentTab === "milestones" && <MilestonesTab {...tabProps} />}
+            {currentTab === "tokenization" && <TokenizationTab {...tabProps} />}
+            {currentTab === "activity" && <ActivityTab {...tabProps} />}
           </div>
 
-          {/* ── Sidebar ───────────────────────────────────────────────────────── */}
+          {/* ── Sidebar ───────────────────────────────────────────────────── */}
           <div className="space-y-4">
             {/* Quick actions — only for agency/client */}
             {(userRole === "agency" || userRole === "client") && (
               <Card className="border border-border bg-surface rounded-xl shadow-sm sticky top-6">
                 <CardHeader className="px-5 pt-5 pb-2">
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted">
-                    Quick Actions
-                  </p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted">Quick Actions</p>
                 </CardHeader>
                 <CardContent className="px-5 pb-5 flex flex-col gap-2">
                   {userRole === "client" && deposited < contract.totalValue && (
@@ -953,184 +1194,32 @@ export default function ContractDetailPage() {
               </Card>
             )}
 
-            {/* Token info — only show after explicit tokenization (not just factory deployment) */}
-            {isTokenized && contract.tokenAddress && (
-              <Card className="border border-brand/30 bg-brand/5 rounded-xl shadow-sm">
-                <CardHeader className="px-5 pt-5 pb-2 flex items-center gap-2">
-                  <Coins className="h-4 w-4 text-brand" />
-                  <p className="text-sm font-bold">Tokenized Asset</p>
-                </CardHeader>
-                <CardContent className="px-5 pb-5 space-y-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted font-medium">Token</span>
-                    <span className="font-mono text-xs text-accent flex items-center gap-1 cursor-pointer hover:underline">
-                      {truncateMiddle(contract.tokenAddress, 6, 4)}{" "}
-                      <ExternalLink className="h-3 w-3" />
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted font-medium">Network</span>
-                    <span className="font-semibold text-foreground">
-                      Base Sepolia
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted font-medium">Status</span>
-                    {contract.onChainAddress ? (
-                      <span className="flex items-center gap-1 text-xs font-semibold text-success">
-                        <CheckCircle className="h-3.5 w-3.5" />
-                        On-chain
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-xs font-semibold text-warning">
-                        <AlertTriangle className="h-3.5 w-3.5" />
-                        DB only — deploy when ready
-                      </span>
-                    )}
-                  </div>
-                  <Link
-                    href={`/marketplace/${id}`}
-                    className="flex items-center justify-center h-8 rounded-md bg-surface-secondary text-accent text-xs font-semibold border border-border/60 hover:bg-default active:scale-[0.98] transition-all"
-                  >
-                    View on Marketplace
-                  </Link>
-                  {userRole === "investor" && (
-                    <Link
-                      href={`/marketplace/${id}`}
-                      className="flex items-center justify-center h-8 rounded-md bg-brand text-brand-foreground text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
-                    >
-                      Buy Tokens on Marketplace
-                    </Link>
-                  )}
-                  {userRole === "agency" && (
-                    <div className="space-y-1.5">
-                      {poolStatus === "success" ? (
-                        <div className="flex items-center gap-2 p-2 rounded-md bg-success/10 text-success text-xs font-medium">
-                          <CheckCircle className="h-3.5 w-3.5 shrink-0" />
-                          Pool active! Investors can now trade on Uniswap
-                        </div>
-                      ) : poolStatus === "error" ? (
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2 p-2 rounded-md bg-danger/10 text-danger text-xs font-medium">
-                            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                            Pool activation failed
-                          </div>
-                          <button
-                            onClick={() => setPoolStatus("idle")}
-                            className="flex items-center justify-center w-full h-8 rounded-md bg-surface-secondary text-xs font-semibold border border-brand/40 text-brand hover:bg-brand/10 active:scale-[0.98] transition-all"
-                          >
-                            Retry
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <button
-                            disabled={poolStatus === "loading"}
-                            onClick={async () => {
-                              setPoolStatus("loading");
-                              setPoolLoading(true);
-                              try {
-                                const res = await fetch(`/api/contracts/${id}/pool`, { method: "POST", headers: { "Content-Type": "application/json", ...(typeof window !== "undefined" && localStorage.getItem("trustsignal_wallet") ? { "X-Wallet-Address": localStorage.getItem("trustsignal_wallet")! } : {}) } });
-                                const data = await res.json();
-                                if (!res.ok) throw new Error(data.error);
-                                setPoolStatus("success");
-                              } catch (err) {
-                                setPoolStatus("error");
-                              } finally {
-                                setPoolLoading(false);
-                              }
-                            }}
-                            className="flex items-center justify-center w-full h-8 rounded-md bg-surface-secondary text-xs font-semibold border border-brand/40 text-brand hover:bg-brand/10 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {poolStatus === "loading" ? (
-                              <>
-                                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                                Creating pool...
-                              </>
-                            ) : (
-                              "Activate Uniswap Pool"
-                            )}
-                          </button>
-                          {poolStatus === "idle" && (
-                            <p className="text-[11px] text-muted text-center">Enable secondary market trading for your contract tokens</p>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Blockchain activity — only for agency/client */}
-            {(userRole === "agency" || userRole === "client") && blockchainEvents.length > 0 && (
-              <Card className="border border-border rounded-xl shadow-sm">
-                <CardHeader className="px-5 pt-5 pb-2 flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-accent" />
-                  <p className="text-sm font-bold">On-Chain Activity</p>
-                </CardHeader>
-                <CardContent className="px-5 pb-5 space-y-2">
-                  {blockchainEvents.map((evt) => (
-                    <div
-                      key={evt.id}
-                      className="flex items-center justify-between text-xs py-1.5 border-b border-border/40 last:border-0"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            evt.status === "confirmed"
-                              ? "bg-success"
-                              : evt.status === "failed"
-                                ? "bg-danger"
-                                : "bg-warning"
-                          }`}
-                        />
-                        <span className="text-muted capitalize">
-                          {evt.operation.replace(/_/g, " ")}
-                        </span>
-                      </div>
-                      {evt.txHash ? (
-                        <a
-                          href={`https://sepolia.basescan.org/tx/${evt.txHash}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-mono text-accent hover:underline flex items-center gap-1"
-                        >
-                          {evt.txHash.slice(0, 6)}...{evt.txHash.slice(-4)}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      ) : (
-                        <span className={evt.status === "failed" ? "text-danger" : "text-muted"}>
-                          {evt.status === "failed" ? "failed" : "pending"}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
             {/* Role indicator */}
             <div className="flex items-start gap-3 p-4 rounded-xl border border-border bg-surface-secondary text-xs text-muted">
               {userRole === "agency" && (
-                <>
-                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <p>You are the agency delivering this contract.</p>
-                </>
+                <><AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" /><p>You are the agency delivering this contract.</p></>
               )}
               {userRole === "client" && (
-                <>
-                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <p>You are the client. Only you and the agency can see contract details.</p>
-                </>
+                <><AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" /><p>You are the client. Only you and the agency can see contract details.</p></>
               )}
               {userRole === "investor" && (
-                <>
-                  <Eye className="h-4 w-4 shrink-0 mt-0.5" />
-                  <p>You are viewing as an investor. Some details may be hidden by the agency.</p>
-                </>
+                <><Eye className="h-4 w-4 shrink-0 mt-0.5" /><p>You are viewing as an investor. Some details may be hidden by the agency.</p></>
               )}
             </div>
+
+            {/* Condensed contract value card */}
+            <Card className="border border-border bg-surface rounded-xl shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted font-medium">Contract Value</span>
+                  <span className="font-bold">{formatCurrency(contract.totalValue)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm mt-1">
+                  <span className="text-muted font-medium">Status</span>
+                  <StatusBadge status={contract.status as "draft" | "active" | "completed" | "disputed"} />
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       ) : (

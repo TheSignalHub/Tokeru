@@ -2,8 +2,8 @@
 
 import { useAuth } from "@/hooks/use-auth";
 import { useApi } from "@/hooks/use-api";
-import { PageHeader, SectionCard, EmptyState } from "@/components/ui";
-import { TrendingUp, Store } from "lucide-react";
+import { PageHeader, SectionCard, EmptyState, StatCard } from "@/components/ui";
+import { TrendingUp, Store, CalendarClock } from "lucide-react";
 import Link from "next/link";
 import { Spinner } from "@heroui/react";
 
@@ -46,6 +46,8 @@ export default function PortfolioPage() {
   const totalValue = items.reduce((sum, h) => sum + h.amount * h.currentPrice, 0);
   const totalCost = items.reduce((sum, h) => sum + h.amount * h.buyPrice, 0);
   const totalPnl = totalValue - totalCost;
+  const activeContracts = items.length;
+  const avgReturn = totalCost > 0 ? ((totalPnl / totalCost) * 100) : 0;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -55,7 +57,7 @@ export default function PortfolioPage() {
         <EmptyState
           icon={<TrendingUp className="h-10 w-10" />}
           title="No investments yet"
-          description="Buy contract tokens on the marketplace to start earning yield."
+          description="Buy contract tokens on the marketplace to start earning returns when milestones complete."
           action={
             <Link href="/marketplace" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground font-medium">
               <Store className="h-4 w-4" /> Browse Marketplace
@@ -64,13 +66,19 @@ export default function PortfolioPage() {
         />
       ) : (
         <>
-          <div className="mb-6 p-4 rounded-lg bg-surface border border-border">
-            <p className="text-xs text-muted uppercase tracking-wider mb-1">Total Portfolio Value</p>
-            <p className="text-2xl font-bold">${totalValue.toFixed(2)}</p>
-            <p className={`text-sm ${totalPnl >= 0 ? "text-success" : "text-danger"}`}>
-              {totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(2)} ({totalCost > 0 ? ((totalPnl / totalCost) * 100).toFixed(1) : "0"}%)
-            </p>
+          {/* Summary stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard value={`$${totalCost.toFixed(2)}`} label="Total Invested" />
+            <StatCard value={`$${totalValue.toFixed(2)}`} label="Total Value" color={totalPnl >= 0 ? "success" : "danger"} />
+            <StatCard value={activeContracts} label="Active Contracts" color="accent" />
+            <StatCard
+              value={`${avgReturn >= 0 ? "+" : ""}${avgReturn.toFixed(1)}%`}
+              label="Avg Return"
+              color={avgReturn >= 0 ? "success" : "danger"}
+            />
           </div>
+
+          {/* Holdings list */}
           <SectionCard>
             <div className="divide-y divide-border/50 -mx-6 -mb-4">
               {items.map((h, i) => {
@@ -79,7 +87,7 @@ export default function PortfolioPage() {
                   <Link key={i} href={`/marketplace/${h.contractId}`} className="flex items-center justify-between px-6 py-4 hover:bg-surface-secondary transition-colors">
                     <div>
                       <p className="font-medium text-sm">{h.tokenName}</p>
-                      <p className="text-xs text-muted">{h.amount} tokens @ ${h.buyPrice.toFixed(2)}</p>
+                      <p className="text-xs text-muted">{h.amount} tokens at ${h.buyPrice.toFixed(2)}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-sm">${value.toFixed(2)}</p>
@@ -92,6 +100,22 @@ export default function PortfolioPage() {
               })}
             </div>
           </SectionCard>
+
+          {/* Upcoming Payouts section */}
+          <div className="mt-6">
+            <SectionCard>
+              <div className="flex items-start gap-3">
+                <CalendarClock className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-sm mb-1">Upcoming Payouts</h3>
+                  <p className="text-sm text-muted">
+                    Payouts are released as milestones are approved by clients.{" "}
+                    <Link href="/marketplace" className="text-accent hover:underline font-medium">Learn more</Link>
+                  </p>
+                </div>
+              </div>
+            </SectionCard>
+          </div>
         </>
       )}
     </div>

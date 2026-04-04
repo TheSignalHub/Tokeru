@@ -618,10 +618,27 @@ export default function DashboardPage() {
           label="Investments"
           count={investments.length}
         />
+        {/* Compact investment stats */}
+        {investments.length > 0 && (() => {
+          const invTotal = investments.reduce((s, inv) => s + inv.amount * inv.buyPrice, 0);
+          const invValue = investments.reduce((s, inv) => s + inv.amount * inv.currentPrice, 0);
+          const invReturn = invTotal > 0 ? ((invValue - invTotal) / invTotal * 100) : 0;
+          return (
+            <div className="flex items-center gap-3 text-xs text-muted mb-3 px-1">
+              <span>Total: <strong className="text-foreground">{formatCurrency(invTotal)}</strong></span>
+              <span className="text-border">·</span>
+              <span>Value: <strong className="text-foreground">{formatCurrency(invValue)}</strong></span>
+              <span className="text-border">·</span>
+              <span>Avg Return: <strong className={invReturn >= 0 ? "text-success" : "text-danger"}>{invReturn >= 0 ? "+" : ""}{invReturn.toFixed(1)}%</strong></span>
+            </div>
+          );
+        })()}
         <SectionCard>
           {investments.length > 0 ? (
             <div className="divide-y divide-border/50 -mx-6 -mb-4">
-              {investments.map((inv) => (
+              {investments.map((inv) => {
+                const expectedReturn = inv.buyPrice > 0 ? ((1 / inv.buyPrice - 1) * 100).toFixed(1) : "0.0";
+                return (
                 <Link
                   key={inv.contractId}
                   href={`/marketplace/${inv.contractId}`}
@@ -633,12 +650,13 @@ export default function DashboardPage() {
                         {inv.title}
                       </span>
                       <div className="text-xs text-muted mt-0.5">
-                        Agency:{" "}
-                        <span className="font-mono">
+                        <span>
                           {inv.agencyName ?? truncateAddress(inv.agencyAddress)}
                         </span>
                         <span className="mx-1.5">·</span>
                         {inv.amount.toLocaleString()} tokens
+                        <span className="mx-1.5">·</span>
+                        <span className="text-success">+{expectedReturn}% expected</span>
                       </div>
                     </div>
                   </div>
@@ -692,13 +710,14 @@ export default function DashboardPage() {
                     <ArrowRight className="h-4 w-4 text-muted group-hover:text-accent group-hover:translate-x-1 transition-all" />
                   </div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <EmptyState
               icon={<TrendingUp className="h-10 w-10" />}
               title="No investments yet"
-              description="Browse tokenized contracts on the marketplace to start earning yield."
+              description="Browse tokenized contracts on the marketplace to start earning returns when milestones complete."
               action={
                 <Link
                   href="/marketplace"

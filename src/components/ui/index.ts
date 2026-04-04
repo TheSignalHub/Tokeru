@@ -8,3 +8,5 @@ export { FormField } from "./form-field";
 export { EmptyState } from "./empty-state";
 export { AgencySetupSection } from "./agency-setup-section";
 export { EvidenceTag } from "./evidence-tag";
+export { RiskTierBadge } from "./risk-tier-badge";
+export { ExpectedReturnBadge } from "./expected-return-badge";
