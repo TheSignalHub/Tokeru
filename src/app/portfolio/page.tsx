@@ -10,9 +10,13 @@ import { Spinner } from "@heroui/react";
 interface Holding {
   tokenAddress: string;
   contractId: string;
+  contractTitle: string;
+  tokenName: string;
   amount: number;
   buyPrice: number;
   currentPrice: number;
+  pnl: number;
+  pnlPct: number;
 }
 
 export default function PortfolioPage() {
@@ -39,6 +43,9 @@ export default function PortfolioPage() {
   }
 
   const items = holdings ?? [];
+  const totalValue = items.reduce((sum, h) => sum + h.amount * h.currentPrice, 0);
+  const totalCost = items.reduce((sum, h) => sum + h.amount * h.buyPrice, 0);
+  const totalPnl = totalValue - totalCost;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -56,30 +63,36 @@ export default function PortfolioPage() {
           }
         />
       ) : (
-        <SectionCard>
-          <div className="divide-y divide-border/50 -mx-6 -mb-4">
-            {items.map((h, i) => {
-              const value = h.amount * h.currentPrice;
-              const cost = h.amount * h.buyPrice;
-              const pnl = value - cost;
-              const pnlPct = cost > 0 ? ((pnl / cost) * 100).toFixed(1) : "0";
-              return (
-                <Link key={i} href={`/marketplace/${h.contractId}`} className="flex items-center justify-between px-6 py-4 hover:bg-surface-secondary transition-colors">
-                  <div>
-                    <p className="font-medium text-sm">{h.tokenAddress.slice(0, 8)}...{h.tokenAddress.slice(-4)}</p>
-                    <p className="text-xs text-muted">{h.amount} tokens @ ${h.buyPrice.toFixed(2)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-sm">${value.toFixed(2)}</p>
-                    <p className={`text-xs ${pnl >= 0 ? "text-success" : "text-danger"}`}>
-                      {pnl >= 0 ? "+" : ""}{pnlPct}%
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
+        <>
+          <div className="mb-6 p-4 rounded-lg bg-surface border border-border">
+            <p className="text-xs text-muted uppercase tracking-wider mb-1">Total Portfolio Value</p>
+            <p className="text-2xl font-bold">${totalValue.toFixed(2)}</p>
+            <p className={`text-sm ${totalPnl >= 0 ? "text-success" : "text-danger"}`}>
+              {totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(2)} ({totalCost > 0 ? ((totalPnl / totalCost) * 100).toFixed(1) : "0"}%)
+            </p>
           </div>
-        </SectionCard>
+          <SectionCard>
+            <div className="divide-y divide-border/50 -mx-6 -mb-4">
+              {items.map((h, i) => {
+                const value = h.amount * h.currentPrice;
+                return (
+                  <Link key={i} href={`/marketplace/${h.contractId}`} className="flex items-center justify-between px-6 py-4 hover:bg-surface-secondary transition-colors">
+                    <div>
+                      <p className="font-medium text-sm">{h.tokenName}</p>
+                      <p className="text-xs text-muted">{h.amount} tokens @ ${h.buyPrice.toFixed(2)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-sm">${value.toFixed(2)}</p>
+                      <p className={`text-xs ${h.pnl >= 0 ? "text-success" : "text-danger"}`}>
+                        {h.pnl >= 0 ? "+" : ""}{h.pnlPct}%
+                      </p>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </SectionCard>
+        </>
       )}
     </div>
   );

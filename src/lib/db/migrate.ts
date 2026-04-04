@@ -142,7 +142,8 @@ export async function ensureTables() {
       contract_id TEXT NOT NULL,
       amount REAL NOT NULL,
       buy_price REAL NOT NULL,
-      current_price REAL NOT NULL
+      current_price REAL NOT NULL,
+      purchased_at TEXT
     )
   `);
 

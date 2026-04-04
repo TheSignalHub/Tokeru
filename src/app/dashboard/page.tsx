@@ -47,9 +47,14 @@ interface MarketplaceListing {
 interface InvestorHolding {
   tokenAddress: string;
   contractId: string;
+  contractTitle: string;
+  tokenName: string;
+  status: string;
   amount: number;
   buyPrice: number;
   currentPrice: number;
+  pnl: number;
+  pnlPct: number;
 }
 
 interface InvestmentRow {
@@ -253,6 +258,11 @@ export default function DashboardPage() {
     walletAddress ? "/api/marketplace" : null,
   );
 
+  /* Fetch investor holdings */
+  const { data: holdingsData } = useApi<InvestorHolding[]>(
+    walletAddress ? `/api/users/${walletAddress}/holdings` : null,
+  );
+
   /* ---- Derive role-based contract groups ---- */
   const agencyContracts = useMemo<DashboardContract[]>(() => {
     if (!allContracts || !walletAddress) return [];
@@ -268,11 +278,26 @@ export default function DashboardPage() {
     );
   }, [allContracts, walletAddress]);
 
-  /* ---- Investments: not yet available (holdings DB not wired) ---- */
+  /* ---- Investments from holdings API ---- */
   const investments = useMemo<InvestmentRow[]>(() => {
-    // Holdings DB not available yet — Uniswap integration coming soon
-    return [];
-  }, []);
+    if (!holdingsData || holdingsData.length === 0) return [];
+    return holdingsData.map((h) => {
+      // Try to find matching marketplace listing for extra data
+      const listing = marketplaceListings?.find((l) => l.tokenId === h.contractId);
+      return {
+        contractId: h.contractId,
+        tokenAddress: h.tokenAddress,
+        title: h.contractTitle ?? listing?.title ?? "Unknown",
+        agencyName: listing?.agency?.name ?? null,
+        agencyAddress: listing?.agency?.address ?? "",
+        amount: h.amount,
+        buyPrice: h.buyPrice,
+        currentPrice: h.currentPrice,
+        status: h.status ?? listing?.status ?? "active",
+        progress: listing?.progress ?? 0,
+      };
+    });
+  }, [holdingsData, marketplaceListings]);
 
   /* ---- Quick stats (across all roles) ---- */
   const allMyContracts = useMemo(

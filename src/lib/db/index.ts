@@ -3,6 +3,7 @@ import * as users from "./users";
 import * as disputes from "./disputes";
 import * as escrows from "./escrows";
 import * as documents from "./documents";
+import * as holdings from "./holdings";
 
 export { ensureInit } from "./init";
 
@@ -12,4 +13,5 @@ export const db = {
   disputes,
   escrows,
   documents,
+  holdings,
 };

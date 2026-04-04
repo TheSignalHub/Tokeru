@@ -95,7 +95,7 @@ export async function GET() {
           poolLiquidity,
           agency: {
             address: contract.agency,
-            name: agencyProfile?.name ?? null,
+            name: agencyProfile?.agencyProfile?.companyName ?? agencyProfile?.name ?? null,
             score: agencyProfile?.agencyProfile?.score ?? null,
             verified: agencyProfile?.agencyProfile?.verified ?? false,
           },

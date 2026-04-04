@@ -160,7 +160,7 @@ export async function GET(
       disputes: exposure.showDisputeHistory ? disputes : undefined,
       agency: {
         address: contract.agency,
-        name: agencyProfile?.name ?? null,
+        name: agencyProfile?.agencyProfile?.companyName ?? agencyProfile?.name ?? null,
         score: agencyProfile?.agencyProfile?.score ?? null,
         verified: agencyProfile?.agencyProfile?.verified ?? false,
       },

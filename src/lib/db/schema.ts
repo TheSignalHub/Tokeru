@@ -133,6 +133,17 @@ export const documents = pgTable("documents", {
 // Escrows
 // ---------------------------------------------------------------------------
 
+export const investorHoldings = pgTable("investor_holdings", {
+  id: serial("id").primaryKey(),
+  investorAddress: text("investor_address").notNull(),
+  tokenAddress: text("token_address").notNull(),
+  contractId: text("contract_id").notNull(),
+  amount: real("amount").notNull(),
+  buyPrice: real("buy_price").notNull(),
+  currentPrice: real("current_price").notNull(),
+  purchasedAt: text("purchased_at"),
+});
+
 export const escrows = pgTable("escrows", {
   contractId: text("contract_id").primaryKey(),
   totalAmount: real("total_amount").notNull(),

@@ -129,8 +129,8 @@ export async function POST(
       }
     }
 
-    // TODO: Record in holdings table when available
-    console.log("[marketplace/buy] Purchase recorded:", { buyerAddress, tokenId, amount, pricePerToken, totalCost });
+    await db.holdings.addToHolding(buyerAddress, tokenId, amount, pricePerToken, contract.tokenAddress ?? "");
+    console.log("[marketplace/buy] Holding recorded:", { buyerAddress, tokenId, amount, pricePerToken });
 
     // Notify agency
     if (contract.agency) {
