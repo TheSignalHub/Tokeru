@@ -20,11 +20,11 @@ export function TokeruLogo({ size = 32, className, color = "currentColor" }: Tok
       className={className}
       aria-label="Tokeru"
     >
-      {/* T crossbar */}
-      <rect x="4" y="4" width="92" height="22" rx="6" fill={color} />
-      {/* T stem melting into droplet */}
+      {/* T crossbar with rounded corners */}
+      <rect x="4" y="2" width="92" height="22" rx="6" fill={color} />
+      {/* T stem melting into a smooth rounded droplet */}
       <path
-        d="M36 4 h28 v50 c0 0 0 12 6 24 c6 12 14 22 14 34 c0 18 -16 22 -34 22 s-34 -4 -34 -22 c0 -12 8 -22 14 -34 c6 -12 6 -24 6 -24 V4z"
+        d="M36 2 h28 v48 c0 8 -1 18 8 36 c6 12 12 20 12 30 c0 8 -6 14 -16 18 c-6 2 -12 3 -18 3 s-12 -1 -18 -3 c-10 -4 -16 -10 -16 -18 c0 -10 6 -18 12 -30 c9 -18 8 -28 8 -36 V2z"
         fill={color}
       />
     </svg>
