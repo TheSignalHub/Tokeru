@@ -2,8 +2,7 @@ import type { UserProfile, UserRole, AgencyProfile } from "@/lib/types";
 import { getDb } from "./client";
 import { users as usersTable, agencyProfiles as agencyProfilesTable } from "./schema";
 import { eq, sql } from "drizzle-orm";
-import { generateMnemonic } from "viem/accounts";
-import { english } from "viem/accounts";
+// Unlink mnemonic is opt-in — users set it up in profile settings
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -69,7 +68,6 @@ export async function createUser(data: {
   roles: UserRole[];
 }): Promise<UserProfile> {
   const now = new Date().toISOString();
-  const mnemonic = generateMnemonic(english);
 
   await getDb().insert(usersTable).values({
     address: data.address,
@@ -77,7 +75,6 @@ export async function createUser(data: {
     email: data.email ?? null,
     roles: JSON.stringify(data.roles),
     createdAt: now,
-    unlinkMnemonic: mnemonic,
   });
 
   return (await loadUser(data.address))!;
@@ -184,14 +181,12 @@ export async function upsert(
 
   const now = new Date().toISOString();
 
-  const mnemonic = generateMnemonic(english);
   await getDb().insert(usersTable).values({
     address,
     name: data.name ?? null,
     email: data.email ?? null,
     roles: JSON.stringify(data.roles ?? []),
     createdAt: data.createdAt?.toISOString() ?? now,
-    unlinkMnemonic: mnemonic,
   });
 
   if (data.agencyProfile) {
