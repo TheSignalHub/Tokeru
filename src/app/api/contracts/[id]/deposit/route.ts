@@ -104,18 +104,20 @@ export async function POST(
         const amountStr = parsed.data.amount.toString();
 
         // 2. Client deposits USDC into Unlink shielded pool (hides their address)
-        console.log("[deposit] Private deposit: client → shielded pool...");
+        console.log("[deposit] Step 1: Client → shielded pool...");
         await privateDeposit(clientUser.unlinkMnemonic, paymentToken, amountStr);
 
-        // 3. Private transfer from client's shielded balance to deployer's shielded balance
-        // The deployer will then deposit into the ServiceContract on behalf of the client
-        console.log("[deposit] Private transfer: shielded pool → operator...");
-        const deployerUnlinkClient = createUnlinkClient(clientUser.unlinkMnemonic);
-        const deployerAddr = await deployerUnlinkClient.getAddress();
-        await privateTransfer(clientUser.unlinkMnemonic, deployerAddr, paymentToken, amountStr);
+        // 3. Private transfer from client's shielded balance to operator's shielded balance
+        console.log("[deposit] Step 2: Client shielded → Operator shielded...");
+        // Get operator's Unlink address (separate mnemonic)
+        const operatorMnemonic = process.env.OPERATOR_UNLINK_MNEMONIC || clientUser.unlinkMnemonic;
+        const operatorUnlink = createUnlinkClient(operatorMnemonic);
+        const operatorUnlinkAddr = await operatorUnlink.getAddress();
+        await privateTransfer(clientUser.unlinkMnemonic, operatorUnlinkAddr, paymentToken, amountStr);
 
-        // 4. Operator deposits into ServiceContract (client address never appears on-chain)
-        console.log("[deposit] Operator depositing into ServiceContract...");
+        // 4. Operator deposits into ServiceContract on-chain
+        //    The on-chain tx shows operator's address, NOT client's
+        console.log("[deposit] Step 3: Operator → ServiceContract escrow...");
         txHash = await depositEscrow(contract.onChainAddress, depositAmount);
         console.log("[deposit] Private deposit complete:", txHash);
       } catch (err) {
