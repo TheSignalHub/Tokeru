@@ -1003,9 +1003,12 @@ export default function TokenDetailPage() {
             )}
           </SectionCard>
 
-          {/* Sell Card -- only visible if user holds tokens */}
+          {/* Claim Card -- only visible if user holds tokens AND contract completed */}
           {authenticated && myHolding && myHolding.amount > 0 && (
-            <SectionCard title="Sell Tokens" className="border-warning/30">
+            <SectionCard
+              title={apiToken.status === "completed" ? "Claim Tokens" : "Your Holdings"}
+              className={apiToken.status === "completed" ? "border-success/30" : "border-border"}
+            >
               <div className="space-y-4">
                 <div className="divide-y divide-border/50 text-sm">
                   <div className="flex justify-between items-center py-2">
@@ -1019,16 +1022,27 @@ export default function TokenDetailPage() {
                     <span>${myHolding.buyPrice.toFixed(2)}/token</span>
                   </div>
                   <div className="flex justify-between items-center py-2">
-                    <span className="text-muted">Current sell price</span>
-                    <span className="font-medium text-accent">
-                      ${myHolding.currentPrice.toFixed(2)}/token
+                    <span className="text-muted">Face value</span>
+                    <span className="font-medium text-success">$1.00/token</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-muted">Your return</span>
+                    <span className="font-medium text-success">
+                      +{((1 / myHolding.buyPrice - 1) * 100).toFixed(1)}%
                     </span>
                   </div>
                 </div>
 
+                {apiToken.status !== "completed" ? (
+                  <p className="text-xs text-muted p-3 rounded-lg bg-surface-secondary">
+                    Tokens can be redeemed at $1.00/token once all milestones are completed.
+                    Contract is currently in progress.
+                  </p>
+                ) : (
+                  <>
                 <div>
                   <label className="text-xs text-muted mb-1 block">
-                    Number of tokens to sell
+                    Number of tokens to claim
                   </label>
                   <Input
                     type="number"
@@ -1068,7 +1082,7 @@ export default function TokenDetailPage() {
                     !sellAmount ||
                     parseFloat(sellAmount) <= 0
                   }
-                  className="w-full bg-warning text-warning-foreground"
+                  className="w-full bg-success text-success-foreground"
                 >
                   {selling ? (
                     <span className="flex items-center gap-2">
@@ -1076,14 +1090,15 @@ export default function TokenDetailPage() {
                       Processing...
                     </span>
                   ) : (
-                    `Sell ${sellAmount || "0"} ${apiToken.tokenSymbol}`
+                    `Claim ${sellAmount || "0"} tokens ($${(parseFloat(sellAmount || "0") * 1).toFixed(2)})`
                   )}
                 </Button>
 
                 <p className="text-xs text-muted/70 text-center leading-relaxed">
-                  Completed contracts sell at face value ($1.00/token).
-                  In-progress contracts sell at your buy price.
+                  Tokens redeemed at face value ($1.00/token).
                 </p>
+                  </>
+                )}
               </div>
             </SectionCard>
           )}

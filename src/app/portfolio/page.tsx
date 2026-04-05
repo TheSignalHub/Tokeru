@@ -14,6 +14,7 @@ interface Holding {
   contractId: string;
   contractTitle: string;
   tokenName: string;
+  status: string;
   amount: number;
   buyPrice: number;
   currentPrice: number;
@@ -139,29 +140,33 @@ export default function PortfolioPage() {
                             {h.pnl >= 0 ? "+" : ""}{h.pnlPct}%
                           </p>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onPress={() => {
-                            if (isOpen) {
-                              setSellFormOpen(null);
-                              setSellAmount("");
-                            } else {
-                              setSellFormOpen(h.contractId);
-                              setSellAmount("");
-                            }
-                          }}
-                          className="text-xs border-border"
-                        >
-                          {isOpen ? "Cancel" : "Sell"}
-                        </Button>
+                        {h.status === "completed" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onPress={() => {
+                              if (isOpen) {
+                                setSellFormOpen(null);
+                                setSellAmount("");
+                              } else {
+                                setSellFormOpen(h.contractId);
+                                setSellAmount("");
+                              }
+                            }}
+                            className="text-xs border-success text-success"
+                          >
+                            {isOpen ? "Cancel" : "Claim"}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted px-2">In progress</span>
+                        )}
                       </div>
                     </div>
                     {isOpen && (
                       <div className="px-6 pb-4 space-y-3">
                         <div className="p-3 rounded-lg bg-surface-secondary space-y-2">
                           <div className="flex justify-between text-xs text-muted">
-                            <span>Available to sell</span>
+                            <span>Available to claim</span>
                             <span>{h.amount} tokens</span>
                           </div>
                           <div className="flex justify-between text-xs text-muted">
@@ -192,7 +197,7 @@ export default function PortfolioPage() {
                             isDisabled={selling || !sellAmount || parseFloat(sellAmount) <= 0}
                             className="bg-danger text-white"
                           >
-                            {selling ? <Spinner size="sm" className="text-white" /> : "Sell"}
+                            {selling ? <Spinner size="sm" className="text-white" /> : "Claim $" + (parseFloat(sellAmount || "0") * 1).toFixed(2)}
                           </Button>
                         </div>
                       </div>
