@@ -358,17 +358,47 @@ function MilestonesTab(props: TabProps) {
                     <>
                       {isPending && (
                         <div className="mt-4 pt-4 border-t border-border/50">
-                          <Link
-                            href={`/contracts/${id}/deliver`}
-                            className="inline-flex items-center gap-2 text-sm font-semibold text-accent border border-accent/30 rounded-lg px-4 py-2 hover:bg-accent/5 active:scale-[0.98] transition-all"
-                          >
-                            <Upload className="h-3.5 w-3.5" /> Submit Deliverable
-                          </Link>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const { submitDeliverable } = await import("@/hooks/use-contracts");
+                                  await submitDeliverable(id, {
+                                    milestoneId: m.id,
+                                    description: `Milestone "${m.name}" marked as delivered`,
+                                  });
+                                  window.location.reload();
+                                } catch (err) {
+                                  alert(err instanceof Error ? err.message : "Failed to mark as delivered");
+                                }
+                              }}
+                              className="flex-1 inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg bg-accent text-accent-foreground text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
+                            >
+                              <CheckCircle className="h-3.5 w-3.5" /> Mark as Delivered
+                            </button>
+                            <Link
+                              href={`/contracts/${id}/deliver`}
+                              className="flex-1 inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg border border-border text-muted text-sm font-semibold hover:text-foreground hover:border-accent/50 active:scale-[0.98] transition-all"
+                            >
+                              <Upload className="h-3.5 w-3.5" /> Add Deliverable
+                            </Link>
+                          </div>
+                          <p className="text-xs text-muted mt-2">
+                            Mark as delivered to request client approval, or add files and proof first.
+                          </p>
                         </div>
                       )}
                       {isDelivered && (
-                        <div className="mt-4 pt-4 border-t border-border/50">
-                          <p className="text-xs text-muted italic">Awaiting client review</p>
+                        <div className="mt-4 pt-4 border-t border-border/50 flex items-center gap-3">
+                          <div className="flex items-center gap-1.5 text-xs font-medium text-accent bg-accent/10 px-2.5 py-1 rounded-md border border-accent/20">
+                            <Loader2 className="h-3 w-3 animate-spin" /> Waiting for client approval
+                          </div>
+                          <Link
+                            href={`/contracts/${id}/deliver`}
+                            className="text-xs text-muted hover:text-accent transition-colors"
+                          >
+                            Add more proof
+                          </Link>
                         </div>
                       )}
                       {isRejected && (
