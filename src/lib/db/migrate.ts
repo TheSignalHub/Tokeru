@@ -151,6 +151,8 @@ export async function ensureTables() {
 
   
 
+  await safeAlter("investor_holdings", "purchased_at", "TEXT");
+
   // Notifications table
   await getDb().execute(sql`
     CREATE TABLE IF NOT EXISTS notifications (
