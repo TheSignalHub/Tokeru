@@ -50,3 +50,5 @@ contracts/broadcast/
 
 # foundry deps (installed via forge install)
 contracts/lib/
+.env.local
+.env.local
