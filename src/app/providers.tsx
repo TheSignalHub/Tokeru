@@ -54,7 +54,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         appearance: {
           theme: "#0f1a14" as const,
           accentColor: "#2E8B57" as const,
-          landingHeader: "Welcome to TrustSignal",
+          landingHeader: "Welcome to Tokeru",
           loginMessage: "Tokenize contracts, verify deliverables, invest with confidence",
           showWalletLoginFirst: false,
           walletChainType: "ethereum-only" as const,

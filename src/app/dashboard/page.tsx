@@ -127,8 +127,8 @@ const discoverCards = [
   {
     icon: <Search className="h-6 w-6 text-accent" />,
     title: "Find an Agency",
-    subtitle: "Find verified agencies on The Signal Directory",
-    href: "https://thesignal.directory",
+    subtitle: "Find verified agencies on Tokeru",
+    href: "https://tokeru.xyz",
     external: true,
   },
   {

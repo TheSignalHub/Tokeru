@@ -1,15 +1,15 @@
 import Image from "next/image";
 
-interface SignalLogoProps {
+interface TokeruLogoProps {
   size?: number;
   className?: string;
 }
 
-export function SignalLogo({ size = 32, className }: SignalLogoProps) {
+export function TokeruLogo({ size = 32, className }: TokeruLogoProps) {
   return (
     <Image
       src="/signal-logo.jpeg"
-      alt="TrustSignal"
+      alt="Tokeru"
       width={size}
       height={size}
       className={className}

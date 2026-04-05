@@ -2,7 +2,7 @@
 set -euo pipefail
 
 echo "╔══════════════════════════════════════════╗"
-echo "║  TrustSignal — Local Development Setup   ║"
+echo "║  Tokeru — Local Development Setup         ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
 echo "This script deploys contracts to a local Anvil fork of Base Sepolia."

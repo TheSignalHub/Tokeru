@@ -1615,7 +1615,7 @@ export default function NewContractPage() {
 
       <div className="text-center mt-6">
         <span className="text-xs text-muted font-medium">
-          Powered by TrustSignal Protocol
+          Powered by Tokeru Protocol
         </span>
       </div>
     </div>

@@ -1,4 +1,4 @@
-# TrustSignal — Landing Page Brief
+# Tokeru — Landing Page Brief
 
 > Everything a designer/developer needs to create the perfect landing page.
 
@@ -6,7 +6,7 @@
 
 ## 1. Product Summary
 
-**TrustSignal** turns service contracts into investable, tradeable digital assets. Agencies get paid upfront by selling tokenized contract rights to investors. Clients deposit escrow into smart contracts. Investors earn fixed returns when milestones are completed.
+**Tokeru** turns service contracts into investable, tradeable digital assets. Agencies get paid upfront by selling tokenized contract rights to investors. Clients deposit escrow into smart contracts. Investors earn fixed returns when milestones are completed.
 
 **One-liner:** "Turn your service contracts into investable assets."
 
@@ -132,7 +132,7 @@ For hackathon/demo, use aspirational or protocol-level stats:
 
 ## 7. Competitive Differentiation
 
-| Feature | TrustSignal | Traditional Escrow | DeFi Lending |
+| Feature | Tokeru | Traditional Escrow | DeFi Lending |
 |---------|------------|-------------------|-------------|
 | Asset type | Service contracts | N/A | Crypto collateral |
 | Return model | Fixed maturity (+8-25%) | N/A | Variable APY |
@@ -275,7 +275,7 @@ Browse Marketplace → Evaluate Agency (score, track record, verification)
 
 ## 12. Current Landing Page File
 
-The existing landing page is at `src/app/page.tsx` (470 lines). It renders full-width (no sidebar — the AppShell component handles this). It uses Framer Motion for animations, pulls featured contracts from the marketplace API, and has sections for Hero, How It Works, Why TrustSignal, Find Your Role, Featured Contracts, Architecture, and Footer.
+The existing landing page is at `src/app/page.tsx` (470 lines). It renders full-width (no sidebar — the AppShell component handles this). It uses Framer Motion for animations, pulls featured contracts from the marketplace API, and has sections for Hero, How It Works, Why Tokeru, Find Your Role, Featured Contracts, Architecture, and Footer.
 
 ### Current component imports available:
 - `SignalLogo` — brand logo component

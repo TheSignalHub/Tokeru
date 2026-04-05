@@ -1,4 +1,4 @@
-# TrustSignal
+# Tokeru
 
 **Tokenize service contracts into investable assets with private escrow and decentralized dispute resolution.**
 

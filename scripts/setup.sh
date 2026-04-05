@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-# TrustSignal — First-Time Setup
+# Tokeru — First-Time Setup
 # ============================================================================
 # Interactive setup script. Run once after cloning:
 #   ./scripts/setup.sh
@@ -14,7 +14,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 echo -e "${BLUE}╔══════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║       TrustSignal — Project Setup        ║${NC}"
+echo -e "${BLUE}║       Tokeru — Project Setup              ║${NC}"
 echo -e "${BLUE}╚══════════════════════════════════════════╝${NC}"
 echo ""
 

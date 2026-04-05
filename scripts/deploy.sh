@@ -2,7 +2,7 @@
 set -euo pipefail
 
 echo "╔══════════════════════════════════════════╗"
-echo "║       TrustSignal — Deploy Contracts     ║"
+echo "║       Tokeru — Deploy Contracts           ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
 

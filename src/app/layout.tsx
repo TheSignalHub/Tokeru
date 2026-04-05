@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TrustSignal — Tokenize Service Contracts",
+  title: "Tokeru — Melt Contracts Into Liquid Assets",
   description:
-    "Turn service contracts into investable assets. AI-verified delivery. Decentralized dispute resolution.",
+    "Turn service contracts into investable tokens. On-chain escrow. Fixed returns. ZKP privacy.",
 };
 
 export default function RootLayout({

@@ -125,7 +125,7 @@ const FAQ_SECTIONS: { title: string; icon: React.ElementType; items: FAQItem[] }
       {
         question: "How is escrow protected?",
         answer:
-          "Escrow is held by the ServiceContract smart contract on Base. The contract enforces milestone-based release with automatic fee splits. Neither the agency, client, nor TrustSignal can unilaterally move funds. The contract code is open source and verifiable on BaseScan.",
+          "Escrow is held by the ServiceContract smart contract on Base. The contract enforces milestone-based release with automatic fee splits. Neither the agency, client, nor Tokeru can unilaterally move funds. The contract code is open source and verifiable on BaseScan.",
       },
       {
         question: "What smart contracts are used?",
@@ -135,7 +135,7 @@ const FAQ_SECTIONS: { title: string; icon: React.ElementType; items: FAQItem[] }
       {
         question: "What is EAS verification?",
         answer:
-          "The Ethereum Attestation Service (EAS) is predeployed on Base. TrustSignal uses it to create verifiable KYB attestations for agencies. Anyone can verify an attestation independently on base-sepolia.easscan.org.",
+          "The Ethereum Attestation Service (EAS) is predeployed on Base. Tokeru uses it to create verifiable KYB attestations for agencies. Anyone can verify an attestation independently on base-sepolia.easscan.org.",
       },
       {
         question: "What blockchain is this on?",
@@ -188,7 +188,7 @@ export default function HelpPage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <PageHeader
         title="Help Center"
-        description="Everything you need to know about using TrustSignal"
+        description="Everything you need to know about using Tokeru"
       />
 
       {/* Quick start cards */}

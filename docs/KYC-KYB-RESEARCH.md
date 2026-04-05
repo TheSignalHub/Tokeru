@@ -1,11 +1,11 @@
-# TrustSignal — KYC/KYB Verification Research
+# Tokeru — KYC/KYB Verification Research
 
 > Research conducted April 4, 2026 for ETHGlobal Cannes hackathon.
 > Goal: let agencies prove legitimacy to investors without revealing private data.
 
 ## The Problem
 
-Investors on TrustSignal need confidence that agencies are real businesses, not scammers. But agencies don't want to publicly expose their company registration, tax ID, or founder identity. We need **verifiable trust without full disclosure**.
+Investors on Tokeru need confidence that agencies are real businesses, not scammers. But agencies don't want to publicly expose their company registration, tax ID, or founder identity. We need **verifiable trust without full disclosure**.
 
 ---
 
@@ -26,8 +26,8 @@ Investors on TrustSignal need confidence that agencies are real businesses, not 
 - Part of the OP Stack standard — Coinbase/Base actively promotes it
 
 **How it works:**
-1. TrustSignal registers a KYB schema on EAS (e.g., `bool isVerified, string jurisdiction, uint256 verifiedAt`)
-2. When an agency passes verification, TrustSignal attests on-chain via EAS
+1. Tokeru registers a KYB schema on EAS (e.g., `bool isVerified, string jurisdiction, uint256 verifiedAt`)
+2. When an agency passes verification, Tokeru attests on-chain via EAS
 3. The attestation UID is stored in the `AgencyProfile.sol` contract
 4. Investors can verify the attestation independently on `base-sepolia.easscan.org`
 5. No private data is on-chain — just the fact that verification passed

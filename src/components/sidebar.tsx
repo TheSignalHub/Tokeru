@@ -19,7 +19,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
-import { SignalLogo } from "./SignalLogo";
+import { TokeruLogo } from "./SignalLogo";
 import { useAuth } from "@/hooks/use-auth";
 
 const mainNav = [
@@ -89,9 +89,9 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       {/* Logo + close on mobile */}
       <div className="flex items-center justify-between px-4 pt-5 pb-2">
         <Link href="/" className="flex items-center gap-2 group" onClick={closeMobile ? onClose : undefined}>
-          <SignalLogo size={28} className="rounded-md" />
+          <TokeruLogo size={28} className="rounded-md" />
           <span className="text-base font-bold tracking-tight group-hover:text-accent transition-colors">
-            TrustSignal
+            Tokeru
           </span>
         </Link>
         {closeMobile && (

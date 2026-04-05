@@ -20,7 +20,7 @@ import {
   BadgeCheck,
   ExternalLink,
 } from "lucide-react";
-import { SignalLogo } from "@/components/SignalLogo";
+import { TokeruLogo } from "@/components/SignalLogo";
 
 /* ------------------------------------------------------------------ */
 /*  Animation variants                                                 */
@@ -96,8 +96,8 @@ function Navbar() {
     >
       <div className={`rounded-2xl px-6 py-3 flex items-center justify-between ${glass}`}>
         <Link href="/" className="flex items-center gap-2.5">
-          <SignalLogo size={28} className="rounded object-cover" />
-          <span className="font-semibold text-foreground tracking-tight text-lg">TrustSignal</span>
+          <TokeruLogo size={28} className="rounded object-cover" />
+          <span className="font-semibold text-foreground tracking-tight text-lg">Tokeru</span>
         </Link>
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted">
           <Link href="/marketplace" className="hover:text-foreground transition-colors">Marketplace</Link>
@@ -152,22 +152,22 @@ function Hero() {
         variants={staggerContainer}
       >
         <motion.div variants={fadeUp} className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-brand/10 border border-brand/20 text-sm font-medium mb-10">
-          <SignalLogo size={18} className="rounded object-cover" />
+          <TokeruLogo size={18} className="rounded object-cover" />
           <span className="text-foreground/70">Intellectual Deliverable Tokenization</span>
         </motion.div>
 
         <motion.h1 variants={fadeUp} className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tighter leading-[1.08]">
-          Turn Your Service Contracts
+          Melt Your Contracts
           <br />
           Into{" "}
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent via-success to-brand">
-            Investable Assets
+            Liquid Assets
           </span>
         </motion.h1>
 
         <motion.p variants={fadeUp} className="mt-7 text-lg sm:text-xl text-muted max-w-2xl mx-auto tracking-tight leading-relaxed">
           Agencies get funded upfront. Investors earn fixed returns.
-          Smart contract escrow protects everyone.
+          Frozen cashflow, unlocked.
         </motion.p>
 
         <motion.div variants={fadeUp} className="mt-12 flex items-center justify-center gap-4 flex-wrap">
@@ -676,8 +676,8 @@ function Footer() {
           {/* Brand column */}
           <div>
             <div className="flex items-center gap-2.5 mb-4">
-              <SignalLogo size={28} className="rounded object-cover" />
-              <span className="font-semibold text-foreground tracking-tight text-lg">TrustSignal</span>
+              <TokeruLogo size={28} className="rounded object-cover" />
+              <span className="font-semibold text-foreground tracking-tight text-lg">Tokeru</span>
             </div>
             <p className="text-sm text-muted tracking-tight leading-relaxed mb-6">
               Institutional marketplace for intellectual deliverable tokenization. Built on Base.
@@ -707,7 +707,7 @@ function Footer() {
         </div>
 
         <div className="border-t border-white/[0.06] pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted/60">
-          <span>2024-2025 TrustSignal. All rights reserved.</span>
+          <span>2024-2025 Tokeru. All rights reserved.</span>
           <div className="flex items-center gap-6">
             <span>Terms of Service</span>
             <span>Privacy Policy</span>

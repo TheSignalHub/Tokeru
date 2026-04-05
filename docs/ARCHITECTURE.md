@@ -1,8 +1,8 @@
-# TrustSignal — Architecture
+# Tokeru — Architecture
 
 ## Single-Chain Model (Base Sepolia)
 
-TrustSignal currently runs on **Base Sepolia** (local dev: Anvil fork at `localhost:8545`). The Anvil fork inherits all deployed contracts from Base Sepolia, including Uniswap V3.
+Tokeru currently runs on **Base Sepolia** (local dev: Anvil fork at `localhost:8545`). The Anvil fork inherits all deployed contracts from Base Sepolia, including Uniswap V3.
 
 ```
 ┌─────────────────────────────────────────────────────┐

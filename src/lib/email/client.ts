@@ -5,7 +5,7 @@ const resend = process.env.RESEND_API_KEY
   : null;
 
 const FROM_EMAIL =
-  process.env.RESEND_FROM_EMAIL || "TrustSignal <support@thesignal.directory>";
+  process.env.RESEND_FROM_EMAIL || "Tokeru <support@thesignal.directory>";
 
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL || "https://trust.thesignal.directory";
@@ -167,7 +167,7 @@ const NOTIFICATION_CONFIG: Record<
     body: (p) =>
       `<p>All milestones on <strong>${p.contractTitle}</strong> have been approved.</p>
        <p>The contract is now <strong>completed</strong> and all escrowed funds have been released.</p>
-       <p style="margin-top:12px;padding:12px;background:#e8f5e9;border-radius:6px;">Thank you for using TrustSignal. View the contract for a full summary.</p>`,
+       <p style="margin-top:12px;padding:12px;background:#e8f5e9;border-radius:6px;">Thank you for using Tokeru. View the contract for a full summary.</p>`,
   },
   contract_refunded: {
     subject: (p) => `Contract cancelled: ${p.contractTitle}`,
@@ -263,7 +263,7 @@ function buildNotificationHtml(bodyHtml: string, contractTitle: string, contract
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; background: #ffffff;">
       <div style="background: linear-gradient(135deg, #1a5c35 0%, #2E8B57 100%); padding: 24px 32px;">
-        <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.3px;">TrustSignal</h1>
+        <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.3px;">Tokeru</h1>
       </div>
       <div style="padding: 32px;">
         <div style="border-left: 3px solid #2E8B57; padding-left: 16px; margin-bottom: 24px;">
@@ -275,7 +275,7 @@ function buildNotificationHtml(bodyHtml: string, contractTitle: string, contract
       </div>
       <div style="padding: 16px 32px; background: #f8f9fa; border-top: 1px solid #e9ecef;">
         <p style="margin: 0; font-size: 12px; color: #868e96;">
-          You received this email because you are a party to a contract on <a href="${APP_URL}" style="color: #2E8B57; text-decoration: none;">TrustSignal</a>.
+          You received this email because you are a party to a contract on <a href="${APP_URL}" style="color: #2E8B57; text-decoration: none;">Tokeru</a>.
           Check agency reputation on the <a href="${APP_URL}/oracle" style="color: #2E8B57; text-decoration: none;">Trust Oracle</a>.
         </p>
       </div>
@@ -294,7 +294,7 @@ function buildInviteHtml(params: {
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; background: #ffffff;">
       <div style="background: linear-gradient(135deg, #1a5c35 0%, #2E8B57 100%); padding: 24px 32px;">
-        <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.3px;">TrustSignal</h1>
+        <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.3px;">Tokeru</h1>
       </div>
       <div style="padding: 32px;">
         <p><strong>${params.inviterName}</strong> has invited you as the <strong>${otherRole}</strong> on a new contract.</p>
@@ -311,7 +311,7 @@ function buildInviteHtml(params: {
       </div>
       <div style="padding: 16px 32px; background: #f8f9fa; border-top: 1px solid #e9ecef;">
         <p style="margin: 0; font-size: 12px; color: #868e96;">
-          You received this email because someone invited you to a contract on <a href="${APP_URL}" style="color: #2E8B57; text-decoration: none;">TrustSignal</a>.
+          You received this email because someone invited you to a contract on <a href="${APP_URL}" style="color: #2E8B57; text-decoration: none;">Tokeru</a>.
         </p>
       </div>
     </div>

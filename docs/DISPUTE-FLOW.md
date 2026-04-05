@@ -1,4 +1,4 @@
-# TrustSignal — Dispute Resolution Flow
+# Tokeru — Dispute Resolution Flow
 
 ## Milestone Lifecycle
 

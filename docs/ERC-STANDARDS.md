@@ -1,4 +1,4 @@
-# TrustSignal — ERC Standards Reference
+# Tokeru — ERC Standards Reference
 
 How we use (and don't use) Ethereum standards across the platform.
 
@@ -73,9 +73,9 @@ redeemAmount = tokenAmount * totalSettled / totalSupply
 
 **What:** A permissioned token standard with on-chain identity registry (ONCHAINID), compliance rules, and transfer restrictions. Designed for regulated securities with full KYC/AML enforcement at the token transfer level.
 
-**Why we don't use it:** Overkill for our use case. TrustSignal tokens represent claims on service contract receivables, not publicly traded securities. ERC-3643 requires deploying 5+ additional contracts (Identity Registry, Compliance, Trusted Issuers Registry, etc.) and every token holder would need an on-chain identity claim. Rayls' Privacy Node already provides confidentiality for sensitive data.
+**Why we don't use it:** Overkill for our use case. Tokeru tokens represent claims on service contract receivables, not publicly traded securities. ERC-3643 requires deploying 5+ additional contracts (Identity Registry, Compliance, Trusted Issuers Registry, etc.) and every token holder would need an on-chain identity claim. Rayls' Privacy Node already provides confidentiality for sensitive data.
 
-**When we would use it:** If TrustSignal scales to institutional investors and regulatory classification as a security instrument becomes necessary.
+**When we would use it:** If Tokeru scales to institutional investors and regulatory classification as a security instrument becomes necessary.
 
 ---
 
@@ -107,7 +107,7 @@ redeemAmount = tokenAmount * totalSettled / totalSupply
 
 **Why we don't use it:** Our `AgencyProfile.sol` uses a simpler mapping-based approach. A soulbound NFT would add wallet visibility (agencies could show their reputation NFT in MetaMask), but requires minting infrastructure, metadata hosting (tokenURI), and more complex querying.
 
-**When we would use it:** When reputation becomes a portable, cross-platform identity. An agency's TrustSignal reputation badge as a soulbound NFT could be recognized by other platforms, job boards, or DeFi protocols.
+**When we would use it:** When reputation becomes a portable, cross-platform identity. An agency's Tokeru reputation badge as a soulbound NFT could be recognized by other platforms, job boards, or DeFi protocols.
 
 ---
 

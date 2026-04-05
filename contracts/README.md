@@ -1,8 +1,8 @@
-# TrustSignal Smart Contracts
+# Tokeru Smart Contracts
 
 ## Overview
 
-TrustSignal uses 7 smart contracts across 3 chains to enable tokenized service contract investment with AI verification and decentralized dispute resolution.
+Tokeru uses 7 smart contracts across 3 chains to enable tokenized service contract investment with AI verification and decentralized dispute resolution.
 
 ## Contracts
 

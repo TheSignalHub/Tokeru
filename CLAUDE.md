@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-**TrustSignal** — a platform to tokenize service contracts into investable, tradeable ERC20 tokens. Agencies create contracts, clients deposit escrow, and investors buy contract tokens on Uniswap V3.
+**Tokeru** — a platform to tokenize service contracts into investable, tradeable ERC20 tokens. Agencies create contracts, clients deposit escrow, and investors buy contract tokens on Uniswap V3.
 
 **Scale:** 18 pages, 25 API routes, 4 smart contracts (27 tests), 10 DB tables.
 
