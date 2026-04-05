@@ -647,6 +647,33 @@ function MilestonesTab(props: TabProps) {
 /* ═══════════════════════════════════════════════════════════════════════════
    Tab 3: Tokenization (agency only)
    ═══════════════════════════════════════════════════════════════════════════ */
+/**
+ * Small component that fetches and displays the pool address for a contract
+ * after the pool has been successfully created.
+ */
+function PoolAddressDisplay({ contractId }: { contractId: string }) {
+  const { data } = useApi<{ pool?: { poolAddress: string } | null }>(
+    `/api/marketplace/${contractId}`,
+  );
+  const poolAddress = data?.pool?.poolAddress;
+
+  if (!poolAddress) return null;
+
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-muted font-medium">Pool Address</span>
+      <a
+        href={`https://sepolia.basescan.org/address/${poolAddress}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-mono text-xs text-accent flex items-center gap-1 hover:underline"
+      >
+        {truncateMiddle(poolAddress, 6, 4)} <ExternalLink className="h-3 w-3" />
+      </a>
+    </div>
+  );
+}
+
 function TokenizationTab(props: TabProps) {
   const { contract, userRole, id, exposure, poolStatus, setPoolStatus, poolLoading, setPoolLoading } = props;
   const isTokenized = !!contract.tokenizationExposure;
@@ -744,9 +771,15 @@ function TokenizationTab(props: TabProps) {
           <CardContent className="p-5 space-y-3">
             <h3 className="text-sm font-bold">Secondary Market</h3>
             {poolStatus === "success" ? (
-              <div className="flex items-center gap-2 p-3 rounded-md bg-success/10 text-success text-sm font-medium">
-                <CheckCircle className="h-4 w-4 shrink-0" />
-                Secondary market is live. Investors can now trade tokens.
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 p-3 rounded-md bg-success/10 text-success text-sm font-medium">
+                  <CheckCircle className="h-4 w-4 shrink-0" />
+                  Secondary market is live.
+                </div>
+                <p className="text-xs text-muted">
+                  Investors can now trade your tokens on Uniswap V3.
+                </p>
+                <PoolAddressDisplay contractId={id} />
               </div>
             ) : poolStatus === "error" ? (
               <div className="space-y-2">

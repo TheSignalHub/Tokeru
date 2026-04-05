@@ -81,6 +81,13 @@ export interface TokenDetail {
     score: number | null;
     verified: boolean;
   };
+  // Uniswap V3 pool data (null if pool not yet created)
+  pool: {
+    poolAddress: string;
+    sqrtPriceX96: string;
+    tick: number;
+    liquidity: string;
+  } | null;
   // client is always null on marketplace (privacy)
   client: { address: null; name: null };
   createdAt: string;

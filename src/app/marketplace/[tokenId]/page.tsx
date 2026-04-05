@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   ArrowRight,
   Layers,
+  ArrowLeftRight,
 } from "lucide-react";
 import { useTokenDetail } from "@/hooks/use-marketplace";
 import { useApi, postApi } from "@/hooks/use-api";
@@ -47,6 +48,21 @@ interface SellResponse {
   salePrice: number;
   totalReceived: number;
   contractCompleted: boolean;
+}
+
+interface TradeResponse {
+  success: boolean;
+  txHash: string;
+  amountIn: string;
+  amountOut: string;
+  action: "buy" | "sell";
+}
+
+interface QuoteResponse {
+  amountIn: string;
+  estimatedOut: string;
+  pricePerToken: number;
+  poolExists: boolean;
 }
 
 interface HoldingItem {
@@ -92,6 +108,13 @@ export default function TokenDetailPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [sellAmount, setSellAmount] = useState("");
   const [selling, setSelling] = useState(false);
+
+  // Secondary market state
+  const [tradeTab, setTradeTab] = useState<"buy" | "sell">("buy");
+  const [tradeAmount, setTradeAmount] = useState("");
+  const [trading, setTrading] = useState(false);
+  const [tradeQuote, setTradeQuote] = useState<QuoteResponse | null>(null);
+  const [quotingTimer, setQuotingTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch user holdings to show sell section
   const { data: userHoldings, refresh: refreshHoldings } = useApi<
@@ -226,6 +249,56 @@ export default function TokenDetailPage() {
       toast.error(msg);
     } finally {
       setSelling(false);
+    }
+  }
+
+  // Fetch quote when trade amount changes (debounced)
+  function fetchQuote(action: "buy" | "sell", amount: string) {
+    if (quotingTimer) clearTimeout(quotingTimer);
+    const parsedAmt = parseFloat(amount);
+    if (!parsedAmt || parsedAmt <= 0) {
+      setTradeQuote(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/marketplace/${tokenId}/quote?action=${action}&amount=${parsedAmt}`,
+        );
+        if (res.ok) {
+          const data: QuoteResponse = await res.json();
+          setTradeQuote(data);
+        }
+      } catch {
+        // ignore quote errors silently
+      }
+    }, 400);
+    setQuotingTimer(timer);
+  }
+
+  async function handleTrade() {
+    const parsedAmt = parseFloat(tradeAmount);
+    if (!parsedAmt || parsedAmt <= 0) return;
+    if (!walletAddress) return;
+
+    setTrading(true);
+    try {
+      const token = await getAuthToken();
+      const result = await postApi<TradeResponse>(
+        `/api/marketplace/${tokenId}/trade`,
+        { action: tradeTab, amount: parsedAmt },
+      );
+      toast.success(
+        `${tradeTab === "buy" ? "Bought" : "Sold"} ~${result.amountOut} ${tradeTab === "buy" ? "tokens" : "USDC"} (tx: ${result.txHash.slice(0, 10)}...)`,
+      );
+      setTradeAmount("");
+      setTradeQuote(null);
+      refreshHoldings();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Trade failed";
+      toast.error(msg);
+    } finally {
+      setTrading(false);
     }
   }
 
@@ -1102,6 +1175,167 @@ export default function TokenDetailPage() {
               </div>
             </SectionCard>
           )}
+
+          {/* Secondary Market */}
+          <SectionCard
+            title="Secondary Market"
+            icon={<ArrowLeftRight className="h-5 w-5 text-accent" />}
+          >
+            {apiToken.pool ? (
+              <div className="space-y-4">
+                <p className="text-xs text-muted">Trade on Uniswap V3</p>
+                <div className="divide-y divide-border/50 text-sm">
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-muted">Pool</span>
+                    <a
+                      href={`${baseScanBaseUrl}/address/${apiToken.pool.poolAddress}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent font-mono text-xs flex items-center gap-1 hover:underline"
+                    >
+                      {apiToken.pool.poolAddress.slice(0, 6)}...
+                      {apiToken.pool.poolAddress.slice(-4)}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-muted">Liquidity</span>
+                    <span className="font-medium text-foreground">
+                      {BigInt(apiToken.pool.liquidity) > BigInt(0) ? "Active" : "Empty"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Buy / Sell tabs */}
+                <div className="flex rounded-lg overflow-hidden border border-border">
+                  <button
+                    onClick={() => {
+                      setTradeTab("buy");
+                      setTradeQuote(null);
+                      if (tradeAmount) fetchQuote("buy", tradeAmount);
+                    }}
+                    className={`flex-1 py-2 text-sm font-semibold transition-colors ${
+                      tradeTab === "buy"
+                        ? "bg-success/15 text-success"
+                        : "bg-surface-secondary text-muted hover:text-foreground"
+                    }`}
+                  >
+                    Buy
+                  </button>
+                  <button
+                    onClick={() => {
+                      setTradeTab("sell");
+                      setTradeQuote(null);
+                      if (tradeAmount) fetchQuote("sell", tradeAmount);
+                    }}
+                    className={`flex-1 py-2 text-sm font-semibold transition-colors ${
+                      tradeTab === "sell"
+                        ? "bg-danger/15 text-danger"
+                        : "bg-surface-secondary text-muted hover:text-foreground"
+                    }`}
+                  >
+                    Sell
+                  </button>
+                </div>
+
+                {/* Amount input */}
+                <div>
+                  <label className="text-xs text-muted mb-1 block">
+                    {tradeTab === "buy" ? "USDC to spend" : "Tokens to sell"}
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      placeholder={tradeTab === "buy" ? "e.g. 100" : "e.g. 50"}
+                      value={tradeAmount}
+                      onChange={(e) => {
+                        setTradeAmount(e.target.value);
+                        fetchQuote(tradeTab, e.target.value);
+                      }}
+                      variant="secondary"
+                      className="w-full"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted pointer-events-none">
+                      {tradeTab === "buy" ? "USDC" : "tokens"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Quote display */}
+                {tradeQuote && tradeQuote.poolExists && parseFloat(tradeAmount) > 0 && (
+                  <div className="p-3 rounded-lg bg-surface-secondary text-sm space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted">Estimated output</span>
+                      <span className="font-medium">
+                        ~{Number(tradeQuote.estimatedOut).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 4,
+                        })}{" "}
+                        {tradeTab === "buy" ? "tokens" : "USDC"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted">Price per token</span>
+                      <span className="font-medium">
+                        ${tradeQuote.pricePerToken.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 4,
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted">Slippage</span>
+                      <span className="font-medium">0.5%</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Trade button */}
+                {authenticated && walletAddress ? (
+                  <Button
+                    onPress={handleTrade}
+                    isDisabled={trading || !tradeAmount || parseFloat(tradeAmount) <= 0}
+                    className={`w-full ${
+                      tradeTab === "buy"
+                        ? "bg-success text-success-foreground"
+                        : "bg-danger text-danger-foreground"
+                    }`}
+                  >
+                    {trading ? (
+                      <span className="flex items-center gap-2">
+                        <Spinner size="sm" />
+                        Processing...
+                      </span>
+                    ) : (
+                      `${tradeTab === "buy" ? "Buy" : "Sell"} on Uniswap`
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    onPress={() => login()}
+                    className="w-full bg-accent text-accent-foreground"
+                  >
+                    Connect Wallet to Trade
+                  </Button>
+                )}
+
+                <p className="text-[11px] text-muted/70 text-center leading-relaxed">
+                  Secondary market prices may differ from the primary market.
+                </p>
+              </div>
+            ) : (
+              <div className="py-2 space-y-2">
+                <p className="text-sm text-muted">
+                  No Uniswap pool available yet.
+                </p>
+                <p className="text-xs text-muted/70">
+                  Trade on the primary market above.
+                </p>
+              </div>
+            )}
+          </SectionCard>
 
           {/* Condensed Agency link */}
           <Link
