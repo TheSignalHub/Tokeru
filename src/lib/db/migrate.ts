@@ -99,8 +99,7 @@ export async function ensureTables() {
     )
   `);
 
-  // Recreate documents table to ensure correct schema (safe — no user data yet)
-  await getDb().execute(sql`DROP TABLE IF EXISTS documents`);
+  // Documents table
   await getDb().execute(sql`
     CREATE TABLE IF NOT EXISTS documents (
       id TEXT PRIMARY KEY,
@@ -134,8 +133,7 @@ export async function ensureTables() {
 
   
 
-  // Recreate investor_holdings to ensure correct schema
-  await getDb().execute(sql`DROP TABLE IF EXISTS investor_holdings`);
+  // Investor holdings table
   await getDb().execute(sql`
     CREATE TABLE IF NOT EXISTS investor_holdings (
       id SERIAL PRIMARY KEY,

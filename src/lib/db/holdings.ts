@@ -2,6 +2,29 @@ import { getDb } from "./client";
 import { investorHoldings } from "./schema";
 import { eq, and, sql } from "drizzle-orm";
 
+/** Ensure the investor_holdings table exists (fallback if migration missed it) */
+async function ensureTable(): Promise<void> {
+  try {
+    const db = getDb();
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS investor_holdings (
+        id SERIAL PRIMARY KEY,
+        investor_address TEXT NOT NULL,
+        token_address TEXT NOT NULL,
+        contract_id TEXT NOT NULL,
+        amount REAL NOT NULL,
+        buy_price REAL NOT NULL,
+        current_price REAL NOT NULL,
+        purchased_at TEXT
+      )
+    `);
+  } catch {
+    // Table likely already exists
+  }
+}
+
+let tableChecked = false;
+
 export interface Holding {
   id: number;
   investorAddress: string;
@@ -13,6 +36,13 @@ export interface Holding {
   purchasedAt: string | null;
 }
 
+async function checkTable() {
+  if (!tableChecked) {
+    await ensureTable();
+    tableChecked = true;
+  }
+}
+
 export async function createHolding(data: {
   investorAddress: string;
   contractId: string;
@@ -20,6 +50,7 @@ export async function createHolding(data: {
   amount: number;
   buyPrice: number;
 }): Promise<void> {
+  await checkTable();
   const db = getDb();
   await db.insert(investorHoldings).values({
     investorAddress: data.investorAddress.toLowerCase(),
@@ -33,6 +64,7 @@ export async function createHolding(data: {
 }
 
 export async function findByInvestor(address: string): Promise<Holding[]> {
+  await checkTable();
   const db = getDb();
   const result = await db
     .select()
@@ -49,6 +81,7 @@ export async function addToHolding(
   buyPrice: number,
   tokenAddress: string = "",
 ): Promise<void> {
+  await checkTable();
   const db = getDb();
   const existing = await db
     .select()

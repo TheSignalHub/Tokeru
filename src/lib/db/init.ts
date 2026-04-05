@@ -4,6 +4,10 @@ let initialized = false;
 
 export async function ensureInit() {
   if (initialized) return;
-  await ensureTables();
+  try {
+    await ensureTables();
+  } catch (err) {
+    console.error("[db] ensureTables failed:", err instanceof Error ? err.message : err);
+  }
   initialized = true;
 }
