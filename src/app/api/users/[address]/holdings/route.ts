@@ -34,11 +34,33 @@ export async function GET(
         // Yield: face value is $1.00, so yield = (1/buyPrice - 1) * 100
         const yieldPct = h.buyPrice > 0 ? ((1 / h.buyPrice - 1) * 100) : 0;
 
+        // Milestone progress: ratio of approved milestones to total
+        const milestones = contract?.milestones ?? [];
+        const totalMilestones = milestones.length;
+        const completedMilestones = milestones.filter(
+          (m) => m.status === "approved",
+        ).length;
+        const milestoneProgress =
+          totalMilestones > 0 ? completedMilestones / totalMilestones : 0;
+
+        // Projected value: face value is $1.00 per token
+        const projectedValue = h.amount * 1.0;
+        // Invested value: what investor actually paid
+        const investedValue = h.amount * h.buyPrice;
+
+        // Look up agency name from users table
+        let agencyName: string | undefined;
+        if (contract?.agency) {
+          const agencyUser = await db.users.findByAddress(contract.agency);
+          agencyName = agencyUser?.agencyProfile?.companyName ?? agencyUser?.name ?? undefined;
+        }
+
         return {
           contractId: h.contractId,
           tokenAddress: h.tokenAddress,
           contractTitle: contract?.title ?? "Unknown Contract",
           tokenName: exposure?.tokenName ?? contract?.title ?? "Unknown",
+          agencyName,
           status: contract?.status ?? "unknown",
           amount: h.amount,
           buyPrice: h.buyPrice,
@@ -47,6 +69,11 @@ export async function GET(
           pnlPct: Math.round(pnlPct * 10) / 10,
           yieldPct: Math.round(yieldPct * 10) / 10,
           purchasedAt: h.purchasedAt,
+          milestoneProgress: Math.round(milestoneProgress * 100) / 100,
+          completedMilestones,
+          totalMilestones,
+          projectedValue,
+          investedValue,
         };
       }),
     );

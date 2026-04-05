@@ -13,6 +13,7 @@ const statusConfig: Record<string, StatusConfigEntry> = {
   active: { color: "success", label: "Active" },
   completed: { color: "success", label: "Completed" },
   disputed: { color: "danger", label: "Disputed" },
+  claimable: { color: "success", label: "Claimable" },
   cancelled: { color: "default", label: "Cancelled" },
   failed: { color: "danger", label: "Failed" },
 
