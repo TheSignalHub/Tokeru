@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { calculateFeeBreakdown, validateDeposit } from "@/lib/payments";
+import {
+  calculateFeeBreakdown,
+  validateDeposit,
+  calculateMilestoneRelease,
+} from "@/lib/payments";
 
 describe("calculateFeeBreakdown", () => {
   it("calculates correct split with BD", () => {
@@ -85,5 +89,37 @@ describe("validateDeposit", () => {
 
     expect(result.valid).toBe(true);
     expect(result.remaining).toBe(0);
+  });
+});
+
+describe("calculateMilestoneRelease", () => {
+  it("splits milestone correctly with BD commission", () => {
+    const result = calculateMilestoneRelease(10_000, 5);
+
+    expect(result.total).toBe(10_000);
+    expect(result.toPlatform).toBe(250); // 2.5%
+    expect(result.toBd).toBe(500); // 5%
+    expect(result.toAgency).toBe(9250); // remainder
+    // Verify parts sum to total
+    expect(result.toAgency + result.toBd + result.toPlatform).toBe(result.total);
+  });
+
+  it("splits milestone correctly with 0% BD", () => {
+    const result = calculateMilestoneRelease(10_000, 0);
+
+    expect(result.total).toBe(10_000);
+    expect(result.toPlatform).toBe(250);
+    expect(result.toBd).toBe(0);
+    expect(result.toAgency).toBe(9750);
+    expect(result.toAgency + result.toBd + result.toPlatform).toBe(result.total);
+  });
+
+  it("handles small milestone amounts", () => {
+    const result = calculateMilestoneRelease(100, 10);
+
+    expect(result.total).toBe(100);
+    expect(result.toPlatform).toBe(2.5);
+    expect(result.toBd).toBe(10);
+    expect(result.toAgency).toBe(87.5);
   });
 });
