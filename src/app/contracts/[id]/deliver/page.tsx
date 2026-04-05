@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Upload, Link2, FileText, ShieldCheck, Loader2, CheckCircle, Clock } from "lucide-react";
+import { Upload, Link2, FileText, ShieldCheck, Loader2, CheckCircle, Clock, Eye } from "lucide-react";
 import { useContract, submitDeliverable } from "@/hooks/use-contracts";
 import { useAuth } from "@/hooks/use-auth";
 import { Button, Input, TextArea } from "@heroui/react";
@@ -71,6 +71,89 @@ export default function DeliverPage() {
       setSubmitting(false);
     }
   };
+
+  const isAgency = contract?.agency?.toLowerCase() === walletAddress?.toLowerCase();
+  const isClient = contract?.client?.toLowerCase() === walletAddress?.toLowerCase();
+
+  // ── Client view: read-only deliverable review ──────────────────────────
+  if (!contractLoading && contract && isClient) {
+    const deliveredMilestones = contract.milestones.filter((m) => m.status === "delivered");
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <PageHeader
+          title="Review Deliverables"
+          description="Review what the agency has submitted for your approval"
+          backHref={`/contracts/${id}`}
+          backLabel="Back to Contract"
+        />
+        {deliveredMilestones.length === 0 ? (
+          <div className="rounded-xl border border-border bg-surface-secondary p-8 text-center">
+            <Clock className="h-10 w-10 text-muted mx-auto mb-3" />
+            <p className="text-sm font-medium text-foreground mb-1">No deliverables to review</p>
+            <p className="text-xs text-muted mb-4">The agency hasn&apos;t submitted any milestones for your review yet.</p>
+            <Link href={`/contracts/${id}`} className="text-sm text-accent hover:underline">
+              Back to Contract
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {deliveredMilestones.map((m) => (
+              <SectionCard key={m.id} title={m.name} className="border-warning/30">
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted">Amount</span>
+                    <span className="font-semibold">{formatCurrency(m.amount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted">Status</span>
+                    <StatusBadge status="delivered" />
+                  </div>
+                  {m.proofHash && (
+                    <div className="flex justify-between">
+                      <span className="text-muted">Proof hash</span>
+                      <code className="text-xs font-mono text-accent">
+                        {m.proofHash.length > 16 ? `${m.proofHash.slice(0, 8)}...${m.proofHash.slice(-6)}` : m.proofHash}
+                      </code>
+                    </div>
+                  )}
+                  {m.deliveredAt && (
+                    <div className="flex justify-between">
+                      <span className="text-muted">Delivered</span>
+                      <span>{new Date(m.deliveredAt).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  <div className="pt-3 border-t border-border/50 flex gap-2">
+                    <Link
+                      href={`/contracts/${id}`}
+                      className="flex-1 inline-flex items-center justify-center h-9 px-4 rounded-lg bg-accent text-accent-foreground text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
+                    >
+                      <CheckCircle className="h-3.5 w-3.5 mr-2" /> Review & Approve
+                    </Link>
+                  </div>
+                </div>
+              </SectionCard>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Non-agency: block access ───────────────────────────────────────────
+  if (!contractLoading && contract && !isAgency) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <PageHeader title="Submit Deliverable" backHref={`/contracts/${id}`} backLabel="Back" />
+        <div className="rounded-xl border border-border bg-surface-secondary p-8 text-center">
+          <ShieldCheck className="h-10 w-10 text-muted mx-auto mb-3" />
+          <p className="text-sm font-medium">Only the agency can submit deliverables</p>
+          <p className="text-xs text-muted mt-1">
+            {isClient ? "Go to the contract page to review and approve milestones." : "You don't have access to this action."}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // ── Empty state: no pending milestones ───────────────────────────────────
   if (!contractLoading && pendingMilestones.length === 0) {

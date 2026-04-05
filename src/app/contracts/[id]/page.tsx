@@ -533,7 +533,7 @@ function MilestonesTab(props: TabProps) {
                                       href={`/contracts/${id}/deliver`}
                                       className="inline-flex items-center gap-1 text-xs text-accent hover:underline mt-1"
                                     >
-                                      <ExternalLink className="h-3 w-3" /> View delivery page
+                                      <ExternalLink className="h-3 w-3" /> View full details
                                     </Link>
                                   </div>
                                 </motion.div>
