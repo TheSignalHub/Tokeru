@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { useApi, postApi } from "./use-api";
+import { useApi, postApi, getGlobalWallet } from "./use-api";
 import { useAuth } from "./use-auth";
 import type {
   ServiceContract,
@@ -67,9 +67,9 @@ export function useContract(id: string) {
 // ---------- Contract list ----------
 
 export function useContracts(userAddress?: string) {
-  const url = userAddress
-    ? `/api/contracts?user=${userAddress}`
-    : "/api/contracts";
+  // Don't fetch if no wallet connected — avoids 401 on unauthenticated pages
+  const hasWallet = !!getGlobalWallet();
+  const url = hasWallet ? "/api/contracts" : null;
 
   const { data, loading, error, refresh } = useApi<ServiceContract[]>(url);
 

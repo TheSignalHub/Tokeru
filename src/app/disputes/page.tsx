@@ -6,6 +6,7 @@ import { Shield, CheckCircle, Clock, AlertTriangle, MessageCircle } from "lucide
 import { useApi } from "@/hooks/use-api";
 import { Spinner } from "@heroui/react";
 import { PageHeader } from "@/components/ui";
+import { timeAgo } from "@/lib/utils/format";
 import type { Dispute, DisputePhase } from "@/lib/types";
 
 interface EnrichedDispute extends Dispute {
@@ -53,13 +54,14 @@ export default function DisputesPage() {
 
   const disputes = data?.disputes ?? [];
 
-  const filtered = activeFilter === "all"
+  const filtered = (activeFilter === "all"
     ? disputes
     : disputes.filter((d) => {
         if (activeFilter === "resolved") return d.phase === "resolved";
         if (activeFilter === "kleros_payment") return d.phase === "kleros_payment" || d.phase === "kleros_review";
         return d.phase === activeFilter;
-      });
+      })
+  ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -133,7 +135,7 @@ export default function DisputesPage() {
               </div>
               <div className="flex items-center gap-4 mt-2 text-xs text-muted">
                 <span>Initiated by {d.initiatedBy}</span>
-                <span>{new Date(d.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                <span>{timeAgo(d.createdAt)}</span>
                 <span>{d.evidence.length} evidence item{d.evidence.length !== 1 ? "s" : ""}</span>
               </div>
             </Link>

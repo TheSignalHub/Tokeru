@@ -111,7 +111,8 @@ export default function MarketplacePage() {
   const { listings, loading } = useMarketplace();
 
   const activeData = useMemo<ActiveListing[]>(() => {
-    return listings.map((c: MarketplaceListing): ActiveListing => {
+    // Reverse to show newest first by default
+    return [...listings].reverse().map((c: MarketplaceListing): ActiveListing => {
       const price = c.pricePerToken ?? 1;
       const supply = c.totalSupply ?? c.totalValue;
       const ret = price > 0 ? ((1 / price - 1) * 100) : 0;

@@ -6,10 +6,14 @@ import { FileText, PlusCircle, Loader2, Search } from "lucide-react";
 import { useContracts } from "@/hooks/use-contracts";
 import { useAuth } from "@/hooks/use-auth";
 import { PageHeader, SectionCard, StatusBadge } from "@/components/ui";
+import { timeAgo } from "@/lib/utils/format";
 import type { ServiceContract } from "@/lib/types";
 
 const STATUS_TABS = ["all", "draft", "active", "completed", "disputed"] as const;
 type StatusTab = (typeof STATUS_TABS)[number];
+
+const ROLE_TABS = ["all", "agency", "client"] as const;
+type RoleTab = (typeof ROLE_TABS)[number];
 
 function tabLabel(tab: StatusTab): string {
   return tab === "all" ? "All" : tab.charAt(0).toUpperCase() + tab.slice(1);
@@ -32,8 +36,7 @@ function getProgress(contract: ServiceContract): string {
 
 function formatDate(date: string | Date | undefined): string {
   if (!date) return "-";
-  const d = typeof date === "string" ? new Date(date) : date;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return timeAgo(date);
 }
 
 function formatValue(value: number): string {
@@ -44,6 +47,7 @@ export default function ContractsPage() {
   const { walletAddress } = useAuth();
   const { contracts, loading, error } = useContracts();
   const [activeTab, setActiveTab] = useState<StatusTab>("all");
+  const [roleTab, setRoleTab] = useState<RoleTab>("all");
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
@@ -51,17 +55,29 @@ export default function ContractsPage() {
     if (activeTab !== "all") {
       list = list.filter((c) => c.status === activeTab);
     }
+    if (roleTab !== "all" && walletAddress) {
+      const addr = walletAddress.toLowerCase();
+      if (roleTab === "agency") {
+        list = list.filter((c) => c.agency.toLowerCase() === addr);
+      } else if (roleTab === "client") {
+        list = list.filter((c) => c.client.toLowerCase() === addr);
+      }
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
         (c) =>
           c.title.toLowerCase().includes(q) ||
           c.category.toLowerCase().includes(q) ||
-          c.id.toLowerCase().includes(q),
+          c.id.toLowerCase().includes(q) ||
+          c.agency.toLowerCase().includes(q) ||
+          c.client.toLowerCase().includes(q),
       );
     }
+    // Sort by newest first
+    list = [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return list;
-  }, [contracts, activeTab, search]);
+  }, [contracts, activeTab, roleTab, search, walletAddress]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -103,6 +119,21 @@ export default function ContractsPage() {
               }`}
             >
               {tabLabel(tab)}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1 sm:ml-auto">
+          {ROLE_TABS.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setRoleTab(tab)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                roleTab === tab
+                  ? "bg-accent/10 text-accent"
+                  : "text-muted hover:text-foreground hover:bg-surface-secondary"
+              }`}
+            >
+              {tab === "all" ? "All Roles" : tab === "agency" ? "As Agency" : "As Client"}
             </button>
           ))}
         </div>
@@ -166,7 +197,15 @@ export default function ContractsPage() {
                   <StatusBadge status={c.status} />
                 </span>
                 <span className="text-sm text-muted">{formatDate(c.createdAt)}</span>
-                <span className="text-sm text-muted">{getProgress(c)}</span>
+                <span className="text-sm text-muted flex items-center gap-2">
+                  {getProgress(c)}
+                  <span className="hidden md:inline-block w-12 h-1.5 rounded-full bg-surface-secondary overflow-hidden">
+                    <span
+                      className="block h-full rounded-full bg-accent transition-all"
+                      style={{ width: `${c.milestones.length > 0 ? (c.milestones.filter((m) => m.status === "approved").length / c.milestones.length) * 100 : 0}%` }}
+                    />
+                  </span>
+                </span>
               </Link>
             ))}
           </div>

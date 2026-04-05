@@ -92,6 +92,7 @@ interface DashboardContract {
   agency: string;
   status: string;
   totalValue: number;
+  createdAt: string;
   milestones: { id: number; name: string; status: string; amount: number }[];
   tokenAddress?: string;
 }
@@ -266,16 +267,16 @@ export default function DashboardPage() {
   /* ---- Derive role-based contract groups ---- */
   const agencyContracts = useMemo<DashboardContract[]>(() => {
     if (!allContracts || !walletAddress) return [];
-    return allContracts.filter(
-      (c) => c.agency?.toLowerCase() === walletAddress.toLowerCase(),
-    );
+    return allContracts
+      .filter((c) => c.agency?.toLowerCase() === walletAddress.toLowerCase())
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [allContracts, walletAddress]);
 
   const clientContracts = useMemo<DashboardContract[]>(() => {
     if (!allContracts || !walletAddress) return [];
-    return allContracts.filter(
-      (c) => c.client?.toLowerCase() === walletAddress.toLowerCase(),
-    );
+    return allContracts
+      .filter((c) => c.client?.toLowerCase() === walletAddress.toLowerCase())
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [allContracts, walletAddress]);
 
   /* ---- Investments from holdings API ---- */

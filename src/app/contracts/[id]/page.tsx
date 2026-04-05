@@ -20,7 +20,7 @@ import {
 } from "@heroui/react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { truncateMiddle, formatCurrency } from "@/lib/utils/format";
+import { truncateMiddle, formatCurrency, timeAgo } from "@/lib/utils/format";
 import {
   StatusBadge, LabeledProgress, PageHeader,
 } from "@/components/ui";
@@ -187,7 +187,7 @@ function OverviewTab({ contract, escrow, userRole, deposited, released, escrowPc
             <div>
               <p className="text-xs text-muted font-medium uppercase tracking-wider mb-1">Created</p>
               <p className="font-bold text-foreground">
-                {contract.createdAt ? new Date(contract.createdAt).toLocaleDateString() : "N/A"}
+                {contract.createdAt ? timeAgo(contract.createdAt) : "N/A"}
               </p>
             </div>
             <div>
@@ -385,7 +385,7 @@ function MilestonesTab(props: TabProps) {
                           {ev.label}
                           {ev.date && (
                             <span className="ml-1 font-mono text-foreground/60">
-                              {new Date(ev.date).toLocaleDateString()}
+                              {timeAgo(ev.date)}
                             </span>
                           )}
                         </span>
@@ -522,10 +522,7 @@ function MilestonesTab(props: TabProps) {
                                       <div className="flex items-center gap-2">
                                         <span className="text-xs text-muted font-medium">Delivered:</span>
                                         <span className="text-xs text-foreground/80">
-                                          {new Date(m.deliveredAt).toLocaleString("en-US", {
-                                            month: "short", day: "numeric", year: "numeric",
-                                            hour: "2-digit", minute: "2-digit",
-                                          })}
+                                          {timeAgo(m.deliveredAt)}
                                         </span>
                                       </div>
                                     )}
