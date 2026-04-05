@@ -254,9 +254,14 @@ export async function conditionalUpdateMilestone(
     )
   );
 
-  // Drizzle returns { rowsAffected } or similar — check if any row was updated
-  const rowsAffected = (result as unknown as { rowsAffected?: number }).rowsAffected ?? 1;
-  if (rowsAffected === 0) {
+  // Neon/Drizzle doesn't reliably return rowsAffected.
+  // Verify the update actually took effect by re-reading the milestone.
+  const contract = await loadContract(contractId);
+  if (!contract) return null;
+
+  const milestone = contract.milestones.find((m) => m.id === milestoneId);
+  if (!milestone || milestone.status !== data.status) {
+    // Status didn't change — the expectedStatus didn't match (race condition)
     return null;
   }
 
@@ -265,7 +270,7 @@ export async function conditionalUpdateMilestone(
     updatedAt: new Date().toISOString(),
   }).where(eq(contractsTable.id, contractId));
 
-  return (await loadContract(contractId))!;
+  return contract;
 }
 
 export async function list(): Promise<ServiceContract[]> {

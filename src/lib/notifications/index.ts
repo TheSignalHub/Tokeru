@@ -48,5 +48,7 @@ export async function notify(
     investorName: params.investorName,
     reason: params.reason,
     actorName: params.actorName,
-  }).catch(() => {});
+  }).catch((err) => {
+    console.warn("[notify] Email send failed:", err instanceof Error ? err.message : err);
+  });
 }

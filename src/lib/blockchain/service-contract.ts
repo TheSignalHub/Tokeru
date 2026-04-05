@@ -71,10 +71,10 @@ export async function depositEscrow(
   }
 
   // 3. Call depositEscrow() — transfers full totalValue from signer to contract
-  //    Fetch nonce explicitly to avoid stale cache after the approve tx.
+  //    Use "pending" nonce to account for the approve tx that may still be in mempool.
   const provider = getProvider();
-  const currentNonce = await provider.getTransactionCount(signerAddress, "latest");
-  console.log("[depositEscrow] Using nonce:", currentNonce);
+  const pendingNonce = await provider.getTransactionCount(signerAddress, "pending");
+  console.log("[depositEscrow] Using pending nonce:", pendingNonce);
 
   const contract = new ethers.Contract(
     contractAddress,
@@ -83,7 +83,7 @@ export async function depositEscrow(
   );
 
   const gasLimit = await estimateGasWithBuffer(contract, "depositEscrow");
-  const tx = await contract.depositEscrow({ gasLimit, nonce: currentNonce });
+  const tx = await contract.depositEscrow({ gasLimit, nonce: pendingNonce });
   const receipt = await tx.wait(1);
   return receipt.hash;
 }

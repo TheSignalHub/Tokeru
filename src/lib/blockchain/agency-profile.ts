@@ -22,7 +22,8 @@ export async function recordCompletion(
   if (!contract) return null;
   try {
     const volumeWei = ethers.parseUnits(volume.toString(), 18);
-    const tx = await contract.recordCompletion(agency, volumeWei, score);
+    const boundedScore = Math.max(0, Math.min(100, Math.round(score)));
+    const tx = await contract.recordCompletion(agency, volumeWei, boundedScore);
     const receipt = await tx.wait(1);
     return receipt.hash;
   } catch (err) {
@@ -41,7 +42,8 @@ export async function recordFailure(
   const contract = getAgencyProfileContract();
   if (!contract) return null;
   try {
-    const tx = await contract.recordFailure(agency, score);
+    const boundedScore = Math.max(0, Math.min(100, Math.round(score)));
+    const tx = await contract.recordFailure(agency, boundedScore);
     const receipt = await tx.wait(1);
     return receipt.hash;
   } catch (err) {
@@ -61,7 +63,8 @@ export async function recordDisputeResult(
   const contract = getAgencyProfileContract();
   if (!contract) return null;
   try {
-    const tx = await contract.recordDisputeResult(agency, won, score);
+    const boundedScore = Math.max(0, Math.min(100, Math.round(score)));
+    const tx = await contract.recordDisputeResult(agency, won, boundedScore);
     const receipt = await tx.wait(1);
     return receipt.hash;
   } catch (err) {
