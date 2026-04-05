@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { setGlobalAuth, getGlobalWallet } from "./use-api";
 
-const IS_LOCAL = process.env.NEXT_PUBLIC_ENV === "local";
+const IS_LOCAL = process.env.NEXT_PUBLIC_ENV === "local" || process.env.NEXT_PUBLIC_AUTH === "local";
 
 /**
  * Unified auth hook.
