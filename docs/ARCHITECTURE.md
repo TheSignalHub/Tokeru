@@ -55,25 +55,31 @@ TrustSignal currently runs on **Base Sepolia** (local dev: Anvil fork at `localh
 | Agency reputation | DB + on-chain (AgencyProfile.sol) | Score, completions, disputes synced on-chain |
 | Documents / evidence | DB + Pinata (IPFS) + Vercel Blob | Dual-write: Pinata primary, Blob fallback |
 | KYB verification | On-chain (EAS attestation) | Revocable attestation on Base |
-| Disputes | DB | Kleros not yet wired (requires Arbitrum) |
+| Disputes | DB | Discussion + evidence + fees work; Kleros court ruling stubbed |
+| Notifications | DB + email | DB-backed notifications + Resend email at every lifecycle step |
+| Holdings | DB | Investor portfolio tracking (token holdings per contract) |
+| Settlements | DB | Settlement proposals within dispute discussion phase |
 
 ## The Complete Flow
 
-### 1. Contract Creation
+### 1. Contract Creation (DB-only)
 ```
 Agency calls POST /api/contracts
-  → Contract saved to DB
-  → If factory configured: ContractFactory.createDeal() on-chain
-  → ServiceContract + ContractToken deployed atomically
-  → Addresses stored in DB
+  → Contract saved to DB as "draft"
+  → NO on-chain deployment yet
   → Invite email sent to counterparty
+  → DB notification created
 ```
 
-### 2. Escrow Deposit
+### 2. Escrow Deposit (triggers on-chain deployment)
 ```
 Client calls POST /api/contracts/[id]/deposit
+  → ContractFactory.createDeal() on-chain
+  → ServiceContract + ContractToken deployed atomically
+  → Addresses stored in DB
   → ERC20 approve + ServiceContract.depositEscrow() on-chain
   → Contract status: Draft → Active
+  → Notifications sent to all parties
 ```
 
 ### 3. Milestone Delivery & Approval
@@ -108,13 +114,25 @@ Step 3 — Pool (optional):
   → Initial liquidity added (full-range position)
 ```
 
-### 6. Dispute (Partial — DB only)
+### 5. Investor Sell/Redeem
+```
+Investor sells tokens:
+  → ContractToken.burn() on-chain (burn mechanism)
+  → Holdings updated in DB
+  → Or: redeem proportional value at contract completion
+```
+
+### 6. Dispute (Full flow — court ruling stubbed)
 ```
 Either party: POST /api/contracts/[id]/dispute
+  → Discussion phase (48h negotiation window)
+  → Settlement proposals can be made
+  → Escalation requires confirmation with cost warning
   → Evidence submission period
   → Both pay arbitration fee (1-month deadline)
   → Default ruling if one doesn't pay
-  → Kleros court NOT YET WIRED (future: requires Arbitrum)
+  → Kleros court ruling NOT YET WIRED (future: requires Arbitrum)
+  → Notifications at every phase transition
 ```
 
 ## Privacy (Unlink ZKP — Optional)
@@ -180,8 +198,8 @@ Agency verification flow:
 
 Schema UID is computed deterministically and registered once. EAS contracts are predeployed at `0x4200...0021` (EAS) and `0x4200...0020` (SchemaRegistry) on Base.
 
-## Future Enhancements
+## What's Stubbed
 
-- **Kleros integration** — requires moving to Arbitrum (Kleros is native there); evidence + fee payment works, court ruling is stubbed
-- **Investor holdings tracking** — add `holdings` table to DB
-- **Trust Oracle** — public reputation verification page
+- **Kleros court ruling** — requires Arbitrum; discussion + evidence + fee payment + settlement all work, court ruling is stubbed
+- **AI document extraction** — placeholder for automatic contract term extraction from uploaded documents
+tation verification page

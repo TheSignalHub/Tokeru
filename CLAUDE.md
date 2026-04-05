@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **TrustSignal** — a platform to tokenize service contracts into investable, tradeable ERC20 tokens. Agencies create contracts, clients deposit escrow, and investors buy contract tokens on Uniswap V3.
 
+**Scale:** 18 pages, 25 API routes, 4 smart contracts (27 tests), 10 DB tables.
+
 **Roles:** Client (pays), Agency (delivers), Business Dev (brokers, earns commission), Investor (buys tokens, earns yield).
 
 ## Build & Run
@@ -76,8 +78,9 @@ src/lib/blockchain/abis/      ← AUTO-GENERATED from Solidity — never edit by
 | `disputes` | UUID | Dispute phases, party responses, evidence |
 | `escrows` | contractId | Escrow state + deposit records (JSON column) |
 | `documents` | UUID | File storage records (IPFS hash, Blob URL, content hash, extracted text) |
-
-**Not yet in schema (TODO):** `holdings` (investor portfolio tracking).
+| `notifications` | UUID | DB-backed notifications + email delivery tracking |
+| `holdings` | UUID | Investor portfolio tracking (token holdings per contract) |
+| `settlements` | UUID | Settlement proposals within dispute discussion phase |
 
 **Data flow:** API routes (`src/app/api/`) serve JSON → client hooks (`src/hooks/`) consume them. `useApi<T>(url)` for reads, `postApi<T>(url, body)` for mutations.
 
@@ -87,19 +90,25 @@ src/lib/blockchain/abis/      ← AUTO-GENERATED from Solidity — never edit by
 
 API routes follow "chain-first" pattern: execute the on-chain transaction, then update DB. If the chain call fails, the DB is not updated.
 
+### Navigation
+Sidebar navigation (collapsible). Landing page is full-width with glassmorphism design, no sidebar.
+
 ### Dispute Flow (Current Implementation)
-1. **Evidence Phase:** Either party starts dispute. Both submit evidence.
-2. **Fee Payment:** Both parties pay arbitration fee (1-month deadline).
+1. **Discussion Phase (48h):** Either party starts dispute. 48-hour negotiation window. Parties can propose settlements.
+2. **Evidence Phase:** If not resolved, escalation requires confirmation with cost warning. Both submit evidence (text, files, links).
+3. **Fee Payment:** Both parties pay arbitration fee (1-month deadline).
    - One party doesn't pay → loses by default
    - Both pay → marked as "kleros_review" in DB
-3. **Kleros Review:** NOT YET WIRED — dispute phases are DB-only. Actual Kleros court integration is a future enhancement (requires Arbitrum, not available on Base Sepolia).
+4. **Arbitration / Resolved:** Kleros court ruling NOT YET WIRED (requires Arbitrum). Evidence + fee payment works, court ruling is stubbed.
 
 ### Critical Product Rules
 - **Client identity is NEVER public.** Investors and marketplace viewers never see client name/address.
 - **No AI analysis** — disputes go directly to evidence submission + Kleros court.
 - **Anyone can be agency, client, AND investor** across different contracts. Roles are per-contract.
-- **Tokenization requires**: active contract (escrow deposited) + agency only.
+- **Tokenization requires**: active contract (escrow deposited) + agency only. 3 steps: tokenize (DB-only) → buy (mint-on-demand) → pool (optional).
+- **On-chain deployment** happens at deposit time, not contract creation.
 - **Agency controls investor visibility** — chooses what data is exposed when tokenizing.
+- **Investor sell/redeem** — investors can sell tokens (burn mechanism) or redeem at contract completion.
 
 ### Key Modules (`src/lib/`)
 | Module | Purpose |
@@ -109,6 +118,7 @@ API routes follow "chain-first" pattern: execute the on-chain transaction, then 
 | `privacy/` | Unlink SDK — ZKP shielded deposits/transfers/withdrawals |
 | `payments/` | Privy server auth, escrow fee calculations |
 | `email/` | Resend — invite & notification emails (14 types) |
+| `notifications/` | DB-backed notifications + email at every lifecycle step |
 | `storage/` | Pinata (IPFS) + Vercel Blob dual-write file storage |
 | `eas/` | EAS attestations — KYB verification on-chain (Base predeployed) |
 | `scoring/` | Agency score computation (completion rate, dispute wins, AI score) |
@@ -155,11 +165,15 @@ Contracts live in `contracts/` — a self-contained Foundry project. Solidity `0
 
 Contracts are deployed via `ContractFactory.createDeal()` which atomically deploys both **ServiceContract + ContractToken**, links them, and transfers token ownership to the ServiceContract.
 
+**On-chain deployment happens at deposit time, not contract creation.** Contract creation saves to DB only. When the client deposits escrow, the factory deploys on-chain.
+
 ```
-POST /api/contracts → db.contracts.createContract() → factory.createDeal()
+POST /api/contracts → db.contracts.createContract() → DB only (draft)
+POST /api/contracts/[id]/deposit → factory.createDeal() on-chain
   → ServiceContract deployed (escrow + milestones)
   → ContractToken deployed (ERC20)
   → Both addresses stored in DB
+  → Contract status: Draft → Active
 ```
 
 ### Contract Inventory
@@ -174,10 +188,9 @@ POST /api/contracts → db.contracts.createContract() → factory.createDeal()
 
 Fee structure: 2.5% platform (fixed) + 0-20% BD commission + remainder to agency, per milestone.
 
-### Future / Not Yet Implemented
-- **Kleros court integration** — requires Arbitrum; on Base Sepolia disputes are DB-only (evidence + fee payment works, court ruling is stubbed)
-- **Trust Oracle page** (/oracle) — not yet built
-- **Investor holdings tracking** — swaps execute on Uniswap but no DB record
+### What's Stubbed
+- **Kleros court ruling** — requires Arbitrum; evidence + fee payment + discussion + settlement all work, court ruling is stubbed
+- **AI document extraction** — placeholder for automatic contract term extraction from uploaded documents
 
 ## Environment Variables
 
