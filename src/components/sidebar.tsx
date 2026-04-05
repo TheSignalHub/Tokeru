@@ -8,6 +8,7 @@ import {
   Store,
   FileText,
   TrendingUp,
+  Shield,
   PlusCircle,
   LogOut,
   Loader2,
@@ -26,6 +27,7 @@ const mainNav = [
   { href: "/marketplace", label: "Marketplace", icon: Store },
   { href: "/contracts", label: "Contracts", icon: FileText },
   { href: "/portfolio", label: "Portfolio", icon: TrendingUp },
+  { href: "/disputes", label: "Disputes", icon: Shield },
 ];
 
 function isActive(pathname: string, href: string) {

@@ -116,7 +116,7 @@ export async function depositEscrow(
 
 export async function submitDeliverable(
   contractId: string,
-  data: { milestoneId: number; proofHash: string; description?: string; links?: string[] },
+  data: { milestoneId: number; proofHash?: string; description?: string; links?: string[] },
 ) {
   return postApi<ServiceContract>(`/api/contracts/${contractId}/deliver`, data);
 }

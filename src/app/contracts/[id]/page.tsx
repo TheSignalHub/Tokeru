@@ -204,6 +204,9 @@ function MilestonesTab(props: TabProps) {
     return events;
   }
 
+  // Milestones that need client review
+  const deliveredMilestones = contract.milestones.filter((m) => m.status === "delivered");
+
   if (userRole === "investor" && !exposure.showMilestones) {
     return (
       <Card className="border border-border rounded-xl p-5">
@@ -215,6 +218,44 @@ function MilestonesTab(props: TabProps) {
   }
 
   return (
+    <div className="space-y-4">
+      {/* Review Required banner for client */}
+      {userRole === "client" && deliveredMilestones.length > 0 && (
+        <div className="space-y-3">
+          {deliveredMilestones.map((m) => (
+            <Card
+              key={`review-${m.id}`}
+              className="border border-warning/40 bg-warning/10 rounded-xl shadow-sm"
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-warning">ACTION REQUIRED</p>
+                    <p className="text-sm text-foreground mt-1">
+                      &ldquo;{m.name}&rdquo; has been delivered and needs your review.
+                      Approve to release funds or reject with feedback.
+                    </p>
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById(`milestone-card-${m.id}`);
+                        if (el) {
+                          el.scrollIntoView({ behavior: "smooth", block: "center" });
+                          setExpandedDeliverable(m.id);
+                        }
+                      }}
+                      className="mt-3 inline-flex items-center gap-2 h-8 px-4 rounded-lg bg-warning text-warning-foreground text-sm font-semibold hover:bg-warning/85 active:scale-[0.98] transition-all"
+                    >
+                      Review Deliverable
+                    </button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
     <div className="relative pl-7">
       {contract.milestones.length > 1 && (
         <div className="absolute left-[11px] top-5 bottom-5 w-px bg-gradient-to-b from-success/40 to-border/20" />
@@ -232,6 +273,7 @@ function MilestonesTab(props: TabProps) {
           return (
             <motion.div
               key={m.id ?? i}
+              id={`milestone-card-${m.id}`}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.07, type: "spring", stiffness: 160 }}
@@ -530,6 +572,7 @@ function MilestonesTab(props: TabProps) {
         })}
       </div>
     </div>
+    </div>
   );
 }
 
@@ -540,6 +583,11 @@ function TokenizationTab(props: TabProps) {
   const { contract, userRole, id, exposure, poolStatus, setPoolStatus, poolLoading, setPoolLoading } = props;
   const isTokenized = !!contract.tokenizationExposure;
 
+  // Parse token details from exposure
+  const tokenDetails = contract.tokenizationExposure
+    ? (JSON.parse(contract.tokenizationExposure) as { tokenName?: string; tokenSymbol?: string; totalSupply?: number; pricePerToken?: number; showDescription: boolean; showMilestones: boolean; showDisputeHistory: boolean })
+    : null;
+
   return (
     <div className="space-y-6">
       {/* Token info card */}
@@ -547,11 +595,35 @@ function TokenizationTab(props: TabProps) {
         <Card className="border border-brand/30 bg-brand/5 rounded-xl shadow-sm">
           <CardHeader className="px-5 pt-5 pb-2 flex items-center gap-2">
             <Coins className="h-4 w-4 text-brand" />
-            <p className="text-sm font-bold">Tokenized Asset</p>
+            <p className="text-sm font-bold">Deal Overview</p>
           </CardHeader>
           <CardContent className="px-5 pb-5 space-y-3 text-sm">
+            {tokenDetails?.tokenName && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted font-medium">Token Name</span>
+                <span className="font-semibold text-foreground">{tokenDetails.tokenName}</span>
+              </div>
+            )}
+            {tokenDetails?.tokenSymbol && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted font-medium">Symbol</span>
+                <span className="font-mono font-semibold text-foreground">{tokenDetails.tokenSymbol}</span>
+              </div>
+            )}
+            {tokenDetails?.totalSupply != null && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted font-medium">Total Supply</span>
+                <span className="font-semibold text-foreground tabular-nums">{tokenDetails.totalSupply.toLocaleString()}</span>
+              </div>
+            )}
+            {tokenDetails?.pricePerToken != null && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted font-medium">Price per Token</span>
+                <span className="font-semibold text-foreground tabular-nums">{formatCurrency(tokenDetails.pricePerToken)}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
-              <span className="text-muted font-medium">Token</span>
+              <span className="text-muted font-medium">Token Address</span>
               <span className="font-mono text-xs text-accent flex items-center gap-1 cursor-pointer hover:underline">
                 {truncateMiddle(contract.tokenAddress, 6, 4)} <ExternalLink className="h-3 w-3" />
               </span>
@@ -568,13 +640,13 @@ function TokenizationTab(props: TabProps) {
                 </span>
               ) : (
                 <span className="flex items-center gap-1 text-xs font-semibold text-warning">
-                  <AlertTriangle className="h-3.5 w-3.5" /> DB only — deploy when ready
+                  <AlertTriangle className="h-3.5 w-3.5" /> DB only -- deploy when ready
                 </span>
               )}
             </div>
             <Link
               href={`/marketplace/${id}`}
-              className="flex items-center justify-center h-8 rounded-md bg-surface-secondary text-accent text-xs font-semibold border border-border/60 hover:bg-default active:scale-[0.98] transition-all"
+              className="flex items-center justify-center h-9 rounded-md bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent/85 active:scale-[0.98] transition-all mt-2"
             >
               View on Marketplace
             </Link>
@@ -598,21 +670,21 @@ function TokenizationTab(props: TabProps) {
         </Card>
       )}
 
-      {/* Activate Uniswap Pool */}
+      {/* Open Secondary Market */}
       {isTokenized && contract.tokenAddress && userRole === "agency" && (
         <Card className="border border-border bg-surface rounded-xl shadow-sm">
           <CardContent className="p-5 space-y-3">
-            <h3 className="text-sm font-bold">Uniswap Pool</h3>
+            <h3 className="text-sm font-bold">Secondary Market</h3>
             {poolStatus === "success" ? (
               <div className="flex items-center gap-2 p-3 rounded-md bg-success/10 text-success text-sm font-medium">
                 <CheckCircle className="h-4 w-4 shrink-0" />
-                Pool active! Investors can now trade on Uniswap
+                Secondary market is live. Investors can now trade tokens.
               </div>
             ) : poolStatus === "error" ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 p-3 rounded-md bg-danger/10 text-danger text-sm font-medium">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
-                  Pool activation failed
+                  Market activation failed
                 </div>
                 <button
                   onClick={() => setPoolStatus("idle")}
@@ -650,13 +722,13 @@ function TokenizationTab(props: TabProps) {
                   className="flex items-center justify-center w-full h-9 rounded-md bg-surface-secondary text-sm font-semibold border border-brand/40 text-brand hover:bg-brand/10 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {poolStatus === "loading" ? (
-                    <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Creating pool...</>
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Opening market...</>
                   ) : (
-                    "Activate Uniswap Pool"
+                    "Open Secondary Market"
                   )}
                 </button>
                 {poolStatus === "idle" && (
-                  <p className="text-[11px] text-muted text-center">Enable secondary market trading for your contract tokens</p>
+                  <p className="text-[11px] text-muted text-center">Enable secondary market trading so investors can buy and sell tokens</p>
                 )}
               </>
             )}
@@ -990,6 +1062,14 @@ export default function ContractDetailPage() {
             className="shrink-0 inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-brand text-brand-foreground text-sm font-semibold shadow-md shadow-brand/20 hover:opacity-90 active:scale-[0.98] transition-all"
           >
             <Coins className="h-4 w-4" /> Tokenize
+          </Link>
+        )}
+        {isTokenized && (
+          <Link
+            href={`/marketplace/${id}`}
+            className="shrink-0 inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-surface-secondary text-accent text-sm font-semibold border border-border/60 hover:bg-default active:scale-[0.98] transition-all"
+          >
+            <ExternalLink className="h-4 w-4" /> View Deal
           </Link>
         )}
       </div>

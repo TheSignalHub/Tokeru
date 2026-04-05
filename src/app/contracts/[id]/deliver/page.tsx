@@ -23,7 +23,6 @@ export default function DeliverPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [submittedProofHash, setSubmittedProofHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -50,20 +49,17 @@ export default function DeliverPage() {
   // Auto-select first pending milestone
   const activeMilestoneId = selectedMilestoneId ?? pendingMilestones[0]?.id ?? null;
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (markCompleteOnly = false) => {
     if (!activeMilestoneId) return;
     setSubmitting(true);
     setError(null);
     try {
-      const proofHash = `proof_${Date.now().toString(36)}_${activeMilestoneId}`;
       const token = await getAuthToken();
       await submitDeliverable(id, {
         milestoneId: activeMilestoneId,
-        proofHash,
         description: notes || undefined,
-        links: links.filter(Boolean),
+        links: markCompleteOnly ? undefined : links.filter(Boolean),
       });
-      setSubmittedProofHash(proofHash);
       setSubmitted(true);
       setTimeout(() => {
         router.push(`/contracts/${id}`);
@@ -107,11 +103,6 @@ export default function DeliverPage() {
         <div className="rounded-xl border border-success/30 bg-success/5 p-8 text-center">
           <CheckCircle className="h-12 w-12 text-success mx-auto mb-3" />
           <p className="text-lg font-semibold text-foreground mb-1">Deliverable submitted</p>
-          {submittedProofHash && (
-            <p className="text-xs text-muted mb-2">
-              Proof hash: <code className="font-mono text-accent">{submittedProofHash}</code>
-            </p>
-          )}
           <p className="text-sm text-muted">
             The client has been notified and will review your submission.
           </p>
@@ -193,7 +184,7 @@ export default function DeliverPage() {
           {/* Description — moved up for prominence */}
           <div>
             <label className="text-sm font-medium mb-2 block">
-              Description <span className="text-danger">*</span>
+              What did you deliver? <span className="text-danger">*</span>
             </label>
             <TextArea
               value={notes}
@@ -298,18 +289,33 @@ export default function DeliverPage() {
         </div>
       )}
 
-      <Button
-        onPress={handleSubmit}
-        isDisabled={submitting || !activeMilestoneId || !notes.trim()}
-        fullWidth
-        className="py-4 rounded-xl bg-accent text-accent-foreground font-medium text-lg hover:bg-accent/80 transition-colors"
-      >
-        {submitting && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
-        {submitting ? "Submitting..." : "Submit Deliverable"}
-      </Button>
+      <div className="space-y-3">
+        <Button
+          onPress={() => handleSubmit(false)}
+          isDisabled={submitting || !activeMilestoneId || !notes.trim()}
+          fullWidth
+          className="py-4 rounded-xl bg-accent text-accent-foreground font-medium text-lg hover:bg-accent/80 transition-colors"
+        >
+          {submitting && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
+          {submitting ? "Submitting..." : "Submit Deliverable"}
+        </Button>
+
+        {files.length === 0 && links.filter(Boolean).length === 0 && (
+          <Button
+            onPress={() => handleSubmit(true)}
+            isDisabled={submitting || !activeMilestoneId || !notes.trim()}
+            fullWidth
+            variant="outline"
+            className="py-4 rounded-xl border-accent/30 text-accent font-medium hover:bg-accent/5 transition-colors"
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Mark as Complete
+          </Button>
+        )}
+      </div>
 
       <p className="text-xs text-muted text-center mt-3">
-        Files will be uploaded to IPFS. Proof hash recorded on Base Sepolia.
+        A proof hash will be auto-generated and recorded on Base Sepolia.
       </p>
     </div>
   );

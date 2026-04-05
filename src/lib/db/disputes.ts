@@ -1,7 +1,7 @@
 import type { Dispute, DisputeEvidence, PartyResponse, SettlementProposal } from "@/lib/types";
 import { getDb } from "./client";
-import { disputes as disputesTable } from "./schema";
-import { eq } from "drizzle-orm";
+import { disputes as disputesTable, contracts as contractsTable } from "./schema";
+import { eq, or, sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -86,6 +86,21 @@ export async function findByContract(contractId: string): Promise<Dispute[]> {
     .from(disputesTable)
     .where(eq(disputesTable.contractId, contractId));
   return rows.map(rowToDispute);
+}
+
+export async function findByUser(userAddress: string): Promise<Dispute[]> {
+  const addr = userAddress.toLowerCase();
+  const rows = await getDb()
+    .select({ dispute: disputesTable })
+    .from(disputesTable)
+    .innerJoin(contractsTable, eq(disputesTable.contractId, contractsTable.id))
+    .where(
+      or(
+        sql`lower(${contractsTable.agency}) = ${addr}`,
+        sql`lower(${contractsTable.client}) = ${addr}`,
+      ),
+    );
+  return rows.map((r) => rowToDispute(r.dispute));
 }
 
 export async function update(id: string, data: Partial<Dispute>): Promise<Dispute> {

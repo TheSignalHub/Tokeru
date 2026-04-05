@@ -37,7 +37,7 @@ async function extractFileText(file: File): Promise<{ text: string; mimeType: st
 
 const DeliverSchema = z.object({
   milestoneId: z.number().int().positive(),
-  proofHash: z.string().min(1),
+  proofHash: z.string().optional(),
   description: z.string().optional(),
   links: z.array(z.string()).optional(),
 });
@@ -57,7 +57,7 @@ export async function POST(
     // Parse body: multipart (with files) or JSON (without)
     const contentType = request.headers.get("content-type") ?? "";
     let milestoneId: number;
-    let proofHash: string;
+    let proofHash: string | undefined;
     let description: string | undefined;
     let links: string[] | undefined;
     let uploadedFiles: File[] = [];
@@ -65,7 +65,7 @@ export async function POST(
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
       milestoneId = Number(formData.get("milestoneId"));
-      proofHash = formData.get("proofHash") as string;
+      proofHash = (formData.get("proofHash") as string) || undefined;
       description = (formData.get("description") as string) || undefined;
       const rawLinks = formData.getAll("links") as string[];
       links = rawLinks.length > 0 ? rawLinks : undefined;
@@ -91,6 +91,16 @@ export async function POST(
       proofHash = parsed.data.proofHash;
       description = parsed.data.description;
       links = parsed.data.links;
+    }
+
+    // Auto-generate proofHash from description if not provided
+    if (!proofHash) {
+      const text = description || `milestone-${milestoneId}-${Date.now()}`;
+      const encoder = new TextEncoder();
+      const data = encoder.encode(text);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      proofHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
     }
 
     const contract = await db.contracts.findById(id);
