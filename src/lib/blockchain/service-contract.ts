@@ -66,21 +66,24 @@ export async function depositEscrow(
   if (allowance < amount) {
     console.log("[depositEscrow] Approving USDC spend...");
     const approveTx = await paymentToken.approve(contractAddress, ethers.MaxUint256);
-    await approveTx.wait(1);
-    console.log("[depositEscrow] USDC approved");
+    await approveTx.wait(2); // wait 2 confirmations on testnet for safety
+    console.log("[depositEscrow] USDC approved, tx:", approveTx.hash);
   }
 
   // 3. Call depositEscrow() — transfers full totalValue from signer to contract
-  //    Use a fresh signer to avoid stale nonce cache after the approve tx above.
-  const freshSigner = getDeployerSigner();
+  //    Fetch nonce explicitly to avoid stale cache after the approve tx.
+  const provider = getProvider();
+  const currentNonce = await provider.getTransactionCount(signerAddress, "latest");
+  console.log("[depositEscrow] Using nonce:", currentNonce);
+
   const contract = new ethers.Contract(
     contractAddress,
     SERVICE_CONTRACT_ABI,
-    freshSigner,
+    signer,
   );
 
   const gasLimit = await estimateGasWithBuffer(contract, "depositEscrow");
-  const tx = await contract.depositEscrow({ gasLimit });
+  const tx = await contract.depositEscrow({ gasLimit, nonce: currentNonce });
   const receipt = await tx.wait(1);
   return receipt.hash;
 }
