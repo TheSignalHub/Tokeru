@@ -16,7 +16,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { postApi, useApi } from "@/hooks/use-api";
 import {
-  Card, CardContent, CardHeader, Button, Spinner, TextArea,
+  Card, CardContent, CardHeader, Button, Spinner, TextArea, Chip,
 } from "@heroui/react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -57,12 +57,13 @@ interface TabProps {
   setPoolLoading: (b: boolean) => void;
   refresh: () => void;
   getAuthToken: () => Promise<string | null>;
+  onSwitchTab?: (tab: string) => void;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Tab 1: Overview
    ═══════════════════════════════════════════════════════════════════════════ */
-function OverviewTab({ contract, escrow, userRole, deposited, released, escrowPct, exposure }: TabProps) {
+function OverviewTab({ contract, escrow, userRole, deposited, released, escrowPct, exposure, onSwitchTab }: TabProps) {
   const milestones = contract.milestones ?? [];
   const approved = milestones.filter((m) => m.status === "approved").length;
 
@@ -104,7 +105,15 @@ function OverviewTab({ contract, escrow, userRole, deposited, released, escrowPc
       {/* Milestone summary table */}
       <Card className="border border-border bg-surface rounded-xl shadow-sm">
         <CardContent className="p-5 sm:p-6">
-          <h2 className="text-base font-bold mb-4 tracking-tight">Milestone Summary</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-bold tracking-tight">Milestone Summary</h2>
+            <button
+              onClick={() => onSwitchTab?.("milestones")}
+              className="text-xs text-accent font-medium hover:underline"
+            >
+              View all
+            </button>
+          </div>
           {userRole === "investor" && !exposure.showMilestones ? (
             <p className="text-sm text-muted">Milestone details are private. {approved}/{milestones.length} milestones completed.</p>
           ) : (
@@ -118,15 +127,47 @@ function OverviewTab({ contract, escrow, userRole, deposited, released, escrowPc
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
-                  {milestones.map((m) => (
-                    <tr key={m.id}>
-                      <td className="py-2.5 text-foreground font-medium">{m.name}</td>
-                      <td className="py-2.5 text-right text-muted tabular-nums">{formatCurrency(m.amount)}</td>
-                      <td className="py-2.5 text-right">
-                        <StatusBadge status={m.status as "pending" | "delivered" | "approved" | "rejected" | "disputed"} />
-                      </td>
-                    </tr>
-                  ))}
+                  {milestones.map((m) => {
+                    // Role-aware status label
+                    let statusLabel: string = m.status;
+                    let statusColor: "default" | "success" | "warning" | "danger" | "accent" = "default";
+                    if (m.status === "pending") {
+                      statusLabel = userRole === "agency" ? "Ready to deliver" : "Waiting for delivery";
+                      statusColor = userRole === "agency" ? "accent" : "default";
+                    } else if (m.status === "delivered") {
+                      statusLabel = userRole === "client" ? "Needs your approval" : "Awaiting approval";
+                      statusColor = userRole === "client" ? "warning" : "accent";
+                    } else if (m.status === "approved") {
+                      statusLabel = "Completed";
+                      statusColor = "success";
+                    } else if (m.status === "rejected") {
+                      statusLabel = userRole === "agency" ? "Rejected — respond" : "Rejected";
+                      statusColor = "danger";
+                    } else if (m.status === "disputed") {
+                      statusLabel = "Under review";
+                      statusColor = "danger";
+                    }
+
+                    const isActionable = (userRole === "agency" && m.status === "pending") ||
+                      (userRole === "client" && m.status === "delivered") ||
+                      (userRole === "agency" && m.status === "rejected");
+
+                    return (
+                      <tr
+                        key={m.id}
+                        onClick={() => onSwitchTab?.("milestones")}
+                        className={`${isActionable ? "cursor-pointer hover:bg-accent/5" : "cursor-pointer hover:bg-surface-secondary"} transition-colors`}
+                      >
+                        <td className="py-2.5 text-foreground font-medium">{m.name}</td>
+                        <td className="py-2.5 text-right text-muted tabular-nums">{formatCurrency(m.amount)}</td>
+                        <td className="py-2.5 text-right">
+                          <Chip size="sm" color={statusColor} variant="soft" className="capitalize">
+                            {statusLabel}
+                          </Chip>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1027,6 +1068,7 @@ export default function ContractDetailPage() {
     setShowRejectForm, setRejectReason, handleApprove, handleReject,
     poolStatus, setPoolStatus, poolLoading, setPoolLoading,
     refresh, getAuthToken,
+    onSwitchTab: (tab: string) => setActiveTab(tab as TabId),
   };
 
   return (
