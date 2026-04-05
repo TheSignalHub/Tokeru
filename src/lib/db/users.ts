@@ -184,12 +184,14 @@ export async function upsert(
 
   const now = new Date().toISOString();
 
+  const mnemonic = generateMnemonic(english);
   await getDb().insert(usersTable).values({
     address,
     name: data.name ?? null,
     email: data.email ?? null,
     roles: JSON.stringify(data.roles ?? []),
     createdAt: data.createdAt?.toISOString() ?? now,
+    unlinkMnemonic: mnemonic,
   });
 
   if (data.agencyProfile) {
