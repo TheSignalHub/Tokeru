@@ -45,15 +45,16 @@ export async function buyTokens(params: {
   usdcAmount: bigint;
   slippageBps?: number; // default 50 bps = 0.5%
   signer: ethers.Signer;
+  recipient?: string; // defaults to signer address
 }): Promise<string> {
-  const { tokenAddress, usdcAddress, usdcAmount, slippageBps = 50, signer } = params;
+  const { tokenAddress, usdcAddress, usdcAmount, slippageBps = 50, signer, recipient } = params;
   const routerAddress = CHAIN_CONFIG.uniswap.router;
 
   // Approve router to spend USDC
   await ensureApproval(usdcAddress, routerAddress, usdcAmount, signer);
 
   const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
-  const recipientAddress = await signer.getAddress();
+  const recipientAddress = recipient || await signer.getAddress();
 
   // Calculate amountOutMinimum with slippage protection
   const amountOutMinimum = await calculateMinOutput(
@@ -87,15 +88,16 @@ export async function sellTokens(params: {
   tokenAmount: bigint;
   slippageBps?: number; // default 50 bps = 0.5%
   signer: ethers.Signer;
+  recipient?: string; // defaults to signer address
 }): Promise<string> {
-  const { tokenAddress, usdcAddress, tokenAmount, slippageBps = 50, signer } = params;
+  const { tokenAddress, usdcAddress, tokenAmount, slippageBps = 50, signer, recipient } = params;
   const routerAddress = CHAIN_CONFIG.uniswap.router;
 
   // Approve router to spend ContractToken
   await ensureApproval(tokenAddress, routerAddress, tokenAmount, signer);
 
   const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
-  const recipientAddress = await signer.getAddress();
+  const recipientAddress = recipient || await signer.getAddress();
 
   // Calculate amountOutMinimum with slippage protection
   const amountOutMinimum = await calculateMinOutput(

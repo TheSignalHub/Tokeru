@@ -4,15 +4,9 @@ import { db, ensureInit } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { calculateMilestoneRelease } from "@/lib/payments/escrow";
 import { approveMilestone, isBlockchainConfigured } from "@/lib/blockchain";
-import { getTokenDecimals } from "@/lib/blockchain/utils";
-import { getProvider } from "@/lib/blockchain/clients";
 import { notify } from "@/lib/notifications";
-import { privateTransfer, isUnlinkConfigured } from "@/lib/privacy";
 import { computeAgencyScore } from "@/lib/scoring";
 import { agencyProfile as agencyProfileChain } from "@/lib/blockchain";
-
-// USDC on Base Sepolia
-const PAYMENT_TOKEN = process.env.PAYMENT_TOKEN_ADDRESS || "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
 
 const ApproveSchema = z.object({
   milestoneId: z.number().int().positive(),
@@ -117,34 +111,8 @@ export async function POST(
 
     const escrow = await db.escrows.release(id, milestone.amount);
 
-    // Attempt private milestone payout via Unlink shielded pool (server-side ZKP)
-    if (isUnlinkConfigured()) {
-      try {
-        // Get the client's mnemonic (escrow holder) and agency's mnemonic (recipient)
-        const clientRaw = await db.users.findRawByAddress(auth.walletAddress);
-        const agencyRaw = await db.users.findRawByAddress(contract.agency);
-        if (clientRaw?.unlinkMnemonic && agencyRaw?.unlinkMnemonic) {
-          const { createUnlinkClient } = await import("@/lib/privacy");
-          const agencyUnlink = createUnlinkClient(agencyRaw.unlinkMnemonic);
-          const agencyUnlinkAddress = await agencyUnlink.getAddress();
-          const toAgencyAmount = feeBreakdown.toAgency;
-          const decimals = await getTokenDecimals(PAYMENT_TOKEN, getProvider());
-          const payoutAmountWei = BigInt(Math.round(toAgencyAmount * 10 ** decimals));
-          await privateTransfer(
-            clientRaw.unlinkMnemonic,
-            agencyUnlinkAddress,
-            PAYMENT_TOKEN,
-            payoutAmountWei.toString(),
-          );
-        }
-      } catch (unlinkError) {
-        console.error("[Unlink] privateTransfer failed:", unlinkError);
-        return Response.json(
-          { error: `Private transfer failed: ${unlinkError instanceof Error ? unlinkError.message : "Unknown error"}` },
-          { status: 500 },
-        );
-      }
-    }
+    // Note: On-chain approveMilestone() already transfers USDC to the agency
+    // via safeTransfer in the smart contract. No separate Unlink payout needed.
 
     const allApproved = updatedContract.milestones.every(
       (m) => m.status === "approved",

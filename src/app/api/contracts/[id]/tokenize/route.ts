@@ -3,6 +3,9 @@ import { z } from "zod";
 import { db, ensureInit } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { isFactoryConfigured, createDeal } from "@/lib/blockchain";
+import { getTokenDecimals } from "@/lib/blockchain/utils";
+import { getProvider } from "@/lib/blockchain/clients";
+import { CHAIN_CONFIG } from "@/lib/blockchain/config";
 import type { TokenizationExposure } from "@/lib/types/contract";
 import { DEFAULT_EXPOSURE } from "@/lib/types/contract";
 import { notify } from "@/lib/notifications";
@@ -77,6 +80,7 @@ export async function POST(
     if (!onChainAddress && isFactoryConfigured() && contract.client && contract.agency) {
       try {
         console.log(`[tokenize] Contract not on-chain yet — deploying via factory...`);
+        const decimals = await getTokenDecimals(CHAIN_CONFIG.paymentTokenAddress, getProvider());
         const result = await createDeal({
           client: contract.client,
           agency: contract.agency,
@@ -85,7 +89,7 @@ export async function POST(
           termsHash: contract.termsHash || `terms_${contract.id}`,
           milestones: contract.milestones.map((m) => ({
             name: m.name,
-            amount: BigInt(Math.round(m.amount * 1e18)),
+            amount: BigInt(Math.round(m.amount * (10 ** decimals))),
             deadline: m.deadline ? Math.floor(new Date(m.deadline).getTime() / 1000) : 0,
           })),
           tokenName,

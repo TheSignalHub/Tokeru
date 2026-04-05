@@ -85,6 +85,7 @@ export async function POST(
 
     const { action, amount } = parsed.data;
     const signer = getDeployerSigner();
+    const investorAddress = auth.user!.walletAddress;
 
     let txHash: string;
     let amountIn: string;
@@ -107,6 +108,7 @@ export async function POST(
         usdcAddress,
         usdcAmount,
         signer,
+        recipient: investorAddress,
       });
 
       amountIn = amount.toString();
@@ -128,6 +130,7 @@ export async function POST(
         usdcAddress,
         tokenAmount,
         signer,
+        recipient: investorAddress,
       });
 
       amountIn = amount.toString();

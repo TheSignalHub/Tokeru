@@ -5,6 +5,8 @@ import { requireRole } from "@/lib/auth";
 import { validateDeposit, createDepositRecord } from "@/lib/payments/escrow";
 import { depositEscrow, isBlockchainConfigured, createDeal, isFactoryConfigured } from "@/lib/blockchain";
 import { CHAIN_CONFIG } from "@/lib/blockchain/config";
+import { getTokenDecimals } from "@/lib/blockchain/utils";
+import { getProvider } from "@/lib/blockchain/clients";
 import { notify } from "@/lib/notifications";
 import { privateDeposit, privateTransfer, isUnlinkConfigured, createUnlinkClient } from "@/lib/privacy";
 
@@ -48,6 +50,9 @@ export async function POST(
     let txHash = parsed.data.txHash || `db_${Date.now().toString(36)}`;
 
     // ── Deploy on-chain if not yet deployed (this is THE moment — money is entering) ──
+    // Query token decimals once — used for factory deploy and deposit amount
+    const decimals = await getTokenDecimals(CHAIN_CONFIG.paymentTokenAddress, getProvider());
+
     if (!contract.onChainAddress && isFactoryConfigured() && contract.client && contract.agency) {
       try {
         console.log("[deposit] Contract not on-chain yet — deploying via factory...");
@@ -59,7 +64,7 @@ export async function POST(
           termsHash: contract.termsHash || `terms_${contract.id}`,
           milestones: contract.milestones.map((m) => ({
             name: m.name,
-            amount: BigInt(Math.round(m.amount * 1e18)),
+            amount: BigInt(Math.round(m.amount * (10 ** decimals))),
             deadline: m.deadline ? Math.floor(new Date(m.deadline).getTime() / 1000) : 0,
           })),
           tokenName: `${contract.title} Token`,
@@ -88,7 +93,7 @@ export async function POST(
     // If Unlink is configured: client deposits into shielded pool → operator withdraws → deposits on-chain
     // This hides the client's wallet address from the on-chain transaction.
     // If Unlink is NOT configured: direct on-chain deposit (client address visible).
-    const depositAmount = BigInt(Math.round(parsed.data.amount * 1e18));
+    const depositAmount = BigInt(Math.round(parsed.data.amount * (10 ** decimals)));
 
     if (isUnlinkConfigured() && contract.onChainAddress && isBlockchainConfigured()) {
       try {
