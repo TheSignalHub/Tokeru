@@ -11,12 +11,16 @@ interface TokeruLogoProps {
  */
 export function TokeruLogo({ size = 32, className, color = "currentColor" }: TokeruLogoProps) {
   return (
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 400" width="100%" height="100%">
-
-  <rect width="200" height="400" fill="#09090b" />
-  
-
-  <path d="M 30 40
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 200 360"
+      width={size}
+      height={size * 1.6}
+      className={className}
+      aria-label="Tokeru"
+    >
+      <path
+        d="M 30 40
            L 170 40
            A 10 10 0 0 1 180 50
            L 180 70
@@ -33,9 +37,9 @@ export function TokeruLogo({ size = 32, className, color = "currentColor" }: Tok
            A 10 10 0 0 1 20 70
            L 20 50
            A 10 10 0 0 1 30 40
-           Z" 
-        fill="#ffffff" />
-</svg>
-
-  )
+           Z"
+        fill={color}
+      />
+    </svg>
+  );
 }
