@@ -11,22 +11,31 @@ interface TokeruLogoProps {
  */
 export function TokeruLogo({ size = 32, className, color = "currentColor" }: TokeruLogoProps) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 100 130"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-label="Tokeru"
-    >
-      {/* T crossbar with rounded corners */}
-      <rect x="4" y="2" width="92" height="22" rx="6" fill={color} />
-      {/* T stem melting into a smooth rounded droplet */}
-      <path
-        d="M36 2 h28 v48 c0 8 -1 18 8 36 c6 12 12 20 12 30 c0 8 -6 14 -16 18 c-6 2 -12 3 -18 3 s-12 -1 -18 -3 c-10 -4 -16 -10 -16 -18 c0 -10 6 -18 12 -30 c9 -18 8 -28 8 -36 V2z"
-        fill={color}
-      />
-    </svg>
-  );
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 400" width="100%" height="100%">
+
+  <rect width="200" height="400" fill="#09090b" />
+  
+
+  <path d="M 30 40
+           L 170 40
+           A 10 10 0 0 1 180 50
+           L 180 70
+           A 10 10 0 0 1 170 80
+           L 125 80
+           A 5 5 0 0 0 120 85
+           L 120 200
+           C 120 260, 155 260, 155 305
+           A 55 55 0 0 1 45 305
+           C 45 260, 80 260, 80 200
+           L 80 85
+           A 5 5 0 0 0 75 80
+           L 30 80
+           A 10 10 0 0 1 20 70
+           L 20 50
+           A 10 10 0 0 1 30 40
+           Z" 
+        fill="#ffffff" />
+</svg>
+
+  )
 }
