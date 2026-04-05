@@ -151,8 +151,6 @@ export async function ensureTables() {
 
   
 
-  await safeAlter("investor_holdings", "purchased_at", "TEXT");
-
   // Notifications table
   await getDb().execute(sql`
     CREATE TABLE IF NOT EXISTS notifications (
@@ -197,6 +195,7 @@ export async function ensureTables() {
   await safeAlter("users", "unlink_mnemonic", "TEXT");
   await safeAlter("disputes", "discussion_deadline", "TEXT");
   await safeAlter("disputes", "settlement", "TEXT");
+  await safeAlter("investor_holdings", "purchased_at", "TEXT");
 
   // Indexes (wrapped in try/catch so a missing column doesn't block the whole app)
   await getDb().execute(sql`CREATE INDEX IF NOT EXISTS idx_milestones_contract ON milestones(contract_id)`);
