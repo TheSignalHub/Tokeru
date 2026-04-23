@@ -14,7 +14,7 @@ Tokeru turns service contracts into tokenized, tradeable digital assets backed b
 
 ## Live Demo
 
-**App:** [tokeru.xyz](https://tokeru.xyz) (or Vercel deployment URL)
+**App:** [[tokeru.xyz](https://idt-app.vercel.app/)]([[https://tokeru.xyz](https://idt-app.vercel.app/)](https://idt-app.vercel.app/)) (Vercel deployment URL)
 **Chain:** Base Sepolia
 **Contracts:** Verified on [BaseScan](https://sepolia.basescan.org)
 
